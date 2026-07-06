@@ -7,6 +7,17 @@
     </svg>
 </button>
 
+{{-- Desktop sidebar collapse toggle --}}
+<button @click="toggleSidebarCollapsed()"
+        :title="sidebarCollapsed ? 'Развернуть меню' : 'Свернуть меню'"
+        class="hidden lg:inline-flex p-2 -ml-2 mr-1 rounded-md text-gray-500 hover:bg-gray-100 hover:text-gray-700">
+    <svg class="w-5 h-5 transition-transform duration-200" :class="sidebarCollapsed ? 'rotate-180' : ''"
+         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5"/>
+    </svg>
+</button>
+
 
 <div class="flex-1 max-w-xl ml-2 lg:ml-0">
 {{-- Global search

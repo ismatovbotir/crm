@@ -1,10 +1,10 @@
 {{-- Logo --}}
-<div class="h-16 flex items-center px-5 border-b border-gray-200">
-    <a href="{{ url('/admin') }}" class="flex items-center gap-2.5">
+<div class="h-16 flex items-center px-5 border-b border-gray-200" :class="sidebarCollapsed ? 'lg:px-0 lg:justify-center' : ''">
+    <a href="{{ url('/admin') }}" class="flex items-center gap-2.5" title="RSG-CRM">
         <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
             <span class="text-white font-bold text-sm">R</span>
         </div>
-        <div>
+        <div :class="sidebarCollapsed ? 'lg:hidden' : ''">
             <span class="font-semibold text-gray-900 text-sm leading-tight block">RSG-CRM</span>
             <span class="text-xs text-gray-400 leading-tight block">Торговое оборудование</span>
         </div>
@@ -46,26 +46,31 @@
             : $base . ' text-gray-600 hover:bg-gray-100 hover:text-gray-900';
         $iconCls = $isActive ? 'text-primary-600' : 'text-gray-400 group-hover:text-gray-600';
 
-        return '<a href="' . url($url) . '" class="' . $cls . '">'
+        return '<a href="' . url($url) . '" class="' . $cls . '" title="' . e($label) . '" :class="sidebarCollapsed ? \'lg:justify-center lg:px-2\' : \'\'">'
             . '<svg class="w-5 h-5 flex-shrink-0 ' . $iconCls . '" fill="none" stroke="currentColor" viewBox="0 0 24 24">'
             . ($icons[$icon] ?? '')
             . '</svg>'
-            . '<span>' . e($label) . '</span>'
+            . '<span :class="sidebarCollapsed ? \'lg:hidden\' : \'\'">' . e($label) . '</span>'
             . '</a>';
+    };
+
+    $sectionLabel = function (string $label) {
+        return '<p class="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400" :class="sidebarCollapsed ? \'lg:hidden\' : \'\'">' . e($label) . '</p>'
+            . '<div class="hidden mx-3 mt-4 mb-1 border-t border-gray-100" :class="sidebarCollapsed ? \'lg:block\' : \'\'"></div>';
     };
 @endphp
 
 {{-- Navigation --}}
-<nav class="px-3 py-3 overflow-y-auto flex flex-col gap-0.5" style="height: calc(100vh - 4rem - 4.5rem);">
+<nav class="px-3 py-3 overflow-y-auto flex flex-col gap-0.5" :class="sidebarCollapsed ? 'lg:px-2' : ''" style="height: calc(100vh - 4rem - 4.5rem);">
 
     {!! $navLink('/admin', 'Дашборд', 'home') !!}
 
     {{-- Management section --}}
-    <p class="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Управление</p>
+    {!! $sectionLabel('Управление') !!}
     {!! $navLink('/admin/tasks', 'Задачи', 'tasks') !!}
 
     {{-- Sales section --}}
-    <p class="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Продажи</p>
+    {!! $sectionLabel('Продажи') !!}
     {!! $navLink('/admin/leads',     'Лиды',    'user-plus', 'leads.view') !!}
     {!! $navLink('/admin/customers', 'Клиенты', 'building',  'customers.view') !!}
     {!! $navLink('/admin/quotes',    'КП',      'document',  'quotes.view') !!}
@@ -75,7 +80,7 @@
 
     {{-- Catalog section --}}
     @if(\App\Helpers\Acl::can('catalog.products.view'))
-    <p class="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Каталог</p>
+    {!! $sectionLabel('Каталог') !!}
     {!! $navLink('/admin/catalog/products',        'Товары',        'cube',   'catalog.products.view') !!}
     {!! $navLink('/admin/catalog/categories',      'Категории',     'tag',    'catalog.products.view') !!}
     {!! $navLink('/admin/catalog/groups',          'Группы',        'layers', 'catalog.products.view') !!}
@@ -84,14 +89,14 @@
 
     {{-- Support section --}}
     @if(\App\Helpers\Acl::can('tickets.view') || \App\Helpers\Acl::can('equipment-requests.view'))
-    <p class="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Поддержка</p>
+    {!! $sectionLabel('Поддержка') !!}
     {!! $navLink('/admin/tickets',           'Тикеты',  'ticket', 'tickets.view') !!}
     {!! $navLink('/admin/equipment-requests','Заявки',  'inbox',  'equipment-requests.view') !!}
     @endif
 
     {{-- Analytics --}}
     @if(\App\Helpers\Acl::can('reports.sales'))
-    <p class="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-gray-400">Аналитика</p>
+    {!! $sectionLabel('Аналитика') !!}
     {!! $navLink('/admin/reports', 'Отчёты', 'chart', 'reports.sales') !!}
     @endif
 
@@ -105,7 +110,7 @@
 </nav>
 
 {{-- User card --}}
-<div class="absolute bottom-0 left-0 right-0 border-t border-gray-200 px-4 py-3 bg-white">
+<div class="absolute bottom-0 left-0 right-0 border-t border-gray-200 px-4 py-3 bg-white" :class="sidebarCollapsed ? 'lg:px-2' : ''">
     @php
         $user      = auth()->user();
         $userName  = $user->name ?? 'Гость';
@@ -120,11 +125,12 @@
             default           => $userRole ?? $user?->email ?? '',
         };
     @endphp
-    <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 text-sm font-semibold flex-shrink-0">
+    <div class="flex items-center gap-3" :class="sidebarCollapsed ? 'lg:justify-center' : ''">
+        <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 text-sm font-semibold flex-shrink-0"
+             title="{{ $userName }} ({{ $roleLabel }})">
             {{ mb_strtoupper(mb_substr($userName, 0, 1)) }}
         </div>
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-0" :class="sidebarCollapsed ? 'lg:hidden' : ''">
             <p class="text-sm font-medium text-gray-900 truncate leading-tight">{{ $userName }}</p>
             <p class="text-xs text-gray-500 truncate leading-tight">{{ $roleLabel }}</p>
         </div>
