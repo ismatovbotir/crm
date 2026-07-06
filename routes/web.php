@@ -133,4 +133,9 @@ Route::middleware(['auth', 'role:client-admin|client-user'])
         Route::get('/catalog', [CatalogController::class, 'index'])->name('catalog.index');
         Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
         Route::get('/equipment', \App\Livewire\Portal\Equipment\Index::class)->name('equipment.index');
+
+        // Equipment Requests (Module 6 — client self-service requests, separate from serial-tracking above)
+        Route::get('/equipment-requests', \App\Livewire\Portal\EquipmentRequests\Index::class)->name('equipment-requests.index');
+        Route::get('/equipment-requests/create', \App\Livewire\Portal\EquipmentRequests\CreateForm::class)->name('equipment-requests.create');
+        Route::get('/equipment-requests/{equipmentRequest}', \App\Livewire\Portal\EquipmentRequests\Show::class)->name('equipment-requests.show');
     });

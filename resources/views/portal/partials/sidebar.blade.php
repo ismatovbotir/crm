@@ -21,6 +21,7 @@
             ['label' => 'Инвойсы',        'url' => '/portal/invoices',  'icon' => 'currency'],
             ['label' => 'Тикеты',         'url' => '/portal/tickets',   'icon' => 'lifebuoy'],
             ['label' => 'Мои устройства', 'url' => '/portal/equipment', 'icon' => 'device'],
+            ['label' => 'Заявки на оборудование', 'url' => '/portal/equipment-requests', 'icon' => 'clipboard'],
             ['label' => 'Каталог',        'url' => '/portal/catalog',   'icon' => 'cube'],
             ['label' => 'Профиль',        'url' => '/portal/profile',   'icon' => 'building'],
         ];
@@ -33,6 +34,7 @@
             'cube'     => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>',
             'building' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>',
             'device'   => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>',
+            'clipboard' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8h6m-6 4h6"/>',
         ];
     @endphp
 
