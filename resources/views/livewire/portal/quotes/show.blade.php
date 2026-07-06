@@ -15,6 +15,12 @@
                 {{ $quote->number }}
             </p>
             <h1 class="text-xl font-bold text-gray-900">КП {{ $quote->number }}</h1>
+            @if($quote->equipment_request_id)
+            <p class="text-xs text-gray-400 mt-0.5">
+                Оформлено из заявки на оборудование
+                <a href="{{ route('portal.equipment-requests.show', $quote->equipment_request_id) }}" class="text-primary-600 hover:underline">#{{ $quote->equipment_request_id }}</a>
+            </p>
+            @endif
         </div>
         <div class="flex items-center gap-2">
             <x-quote-status-badge :status="$quote->status" />

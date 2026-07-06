@@ -85,10 +85,62 @@
                 </form>
             </x-card>
 
+            {{-- Comments --}}
+            <div class="space-y-3">
+                @forelse($request->comments as $comment)
+                <div @class(['rounded-xl border p-4 shadow-sm',
+                    'border-gray-200 bg-white' => !$comment->is_internal,
+                    'border-warning-200 bg-warning-50' => $comment->is_internal])>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-7 h-7 rounded-full bg-primary-100 text-primary-700 text-xs font-bold flex items-center justify-center flex-shrink-0">{{ substr($comment->user->name,0,1) }}</span>
+                            <span class="text-sm font-medium text-gray-900">{{ $comment->user->name }}</span>
+                            @if($comment->is_internal)<x-badge color="yellow">Внутр.</x-badge>@endif
+                        </div>
+                        <span class="text-xs text-gray-400">{{ $comment->created_at->diffForHumans() }}</span>
+                    </div>
+                    <p class="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{{ $comment->body }}</p>
+                </div>
+                @empty
+                <div class="text-center py-6 text-sm text-gray-400">Комментариев пока нет</div>
+                @endforelse
+            </div>
+
+            {{-- Add comment --}}
+            <x-card title="Ответить">
+                <form wire:submit="addComment" class="space-y-3">
+                    <textarea wire:model="commentBody" rows="4"
+                              class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                              placeholder="Введите ответ..."></textarea>
+                    @error('commentBody')<p class="text-xs text-danger-600">{{ $message }}</p>@enderror
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" wire:model="isInternal" class="rounded border-gray-300 text-warning-500 focus:ring-warning-500">
+                            Внутренняя заметка
+                        </label>
+                        <x-button type="submit" wire:loading.attr="disabled">
+                            <span wire:loading.remove>Отправить</span><span wire:loading>Отправка...</span>
+                        </x-button>
+                    </div>
+                </form>
+            </x-card>
+
         </div>
 
         {{-- Sidebar --}}
         <div class="space-y-4">
+
+            @if($request->quote)
+                <x-card title="Коммерческое предложение">
+                    <a href="{{ route('admin.quotes.show', $request->quote) }}"
+                       class="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700">
+                        {{ $request->quote->number }}
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                        </svg>
+                    </a>
+                </x-card>
+            @endif
 
             {{-- Status --}}
             <x-card title="Изменить статус">

@@ -11,6 +11,12 @@
             </nav>
             <h1 class="text-xl font-bold text-gray-900">{{ $quote->number }}</h1>
             <p class="text-sm text-gray-500">{{ $quote->customer->name }}</p>
+            @if($quote->equipment_request_id)
+            <p class="text-xs text-gray-400 mt-1">
+                Оформлено из заявки на оборудование
+                <a href="{{ route('admin.equipment-requests.show', $quote->equipment_request_id) }}" class="text-primary-600 hover:underline">#{{ $quote->equipment_request_id }}</a>
+            </p>
+            @endif
         </div>
         <div class="flex items-center gap-2">
             <x-quote-status-badge :status="$quote->status" />

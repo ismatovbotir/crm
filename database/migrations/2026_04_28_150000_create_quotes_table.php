@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('customer_id')->constrained('customers')->restrictOnDelete();
             $table->foreignId('manager_id')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('contact_id')->nullable()->constrained('contacts')->nullOnDelete();
+            $table->foreignId('equipment_request_id')->nullable()->constrained('equipment_requests')->nullOnDelete();
             $table->string('currency', 3)->default('UZS');
             $table->decimal('exchange_rate', 10, 4)->default(1);
             $table->date('issue_date')->nullable();
@@ -37,6 +38,7 @@ return new class extends Migration
             $table->index('customer_id');
             $table->index('manager_id');
             $table->index('status');
+            $table->index('equipment_request_id');
         });
     }
 

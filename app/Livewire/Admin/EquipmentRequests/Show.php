@@ -2,7 +2,9 @@
 
 namespace App\Livewire\Admin\EquipmentRequests;
 
+use App\Models\Quote\Quote;
 use App\Models\Support\EquipmentRequest;
+use App\Models\Support\EquipmentRequestComment;
 use App\Models\User;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -13,11 +15,13 @@ class Show extends Component
 
     public string $notes = '';
     public ?int $assignManagerId = null;
+    public string $commentBody = '';
+    public bool $isInternal = false;
 
     public function mount(EquipmentRequest $equipmentRequest): void
     {
         abort_unless(auth()->user()->can('equipment-requests.view'), 403);
-        $this->request = $equipmentRequest->load(['customer', 'manager']);
+        $this->request = $equipmentRequest->load(['customer', 'manager', 'quote', 'comments.user']);
         $this->notes = $equipmentRequest->notes ?? '';
         $this->assignManagerId = $equipmentRequest->manager_id;
     }
@@ -52,11 +56,63 @@ class Show extends Component
         session()->flash('success', 'Заметки сохранены.');
     }
 
-    public function convertToQuote(): string
+    public function addComment(): void
     {
-        return redirect()->route('admin.quotes.index', [
-            'customer_id' => $this->request->customer_id,
+        $this->validate(['commentBody' => 'required|string|max:10000']);
+
+        $this->request->comments()->create([
+            'user_id'     => auth()->id(),
+            'body'        => $this->commentBody,
+            'is_internal' => $this->isInternal,
         ]);
+
+        $this->commentBody = '';
+        $this->isInternal = false;
+        $this->request->load('comments.user');
+    }
+
+    public function convertToQuote(): void
+    {
+        if ($this->request->quote()->exists()) {
+            $this->redirect(route('admin.quotes.edit', $this->request->quote()->first()), navigate: true);
+
+            return;
+        }
+
+        $year  = now()->year;
+        $count = Quote::whereYear('created_at', $year)->withTrashed()->count() + 1;
+        $number = 'КП-' . $year . '-' . str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+
+        $summaryParts = ['Заявка на оборудование: ' . $this->request->subject];
+
+        if ($this->request->description) {
+            $summaryParts[] = $this->request->description;
+        }
+
+        $summaryParts[] = 'Бюджет клиента: ' . ($this->request->budget
+            ? number_format((float) $this->request->budget, 0, '.', ' ') . ' UZS'
+            : 'не указан');
+
+        $summaryParts[] = 'Желаемый срок: ' . ($this->request->needed_by?->format('d.m.Y') ?? 'не указан');
+
+        $quote = Quote::create([
+            'number'               => $number,
+            'customer_id'          => $this->request->customer_id,
+            'manager_id'           => $this->request->manager_id ?: auth()->id(),
+            'equipment_request_id' => $this->request->id,
+            'currency'             => 'UZS',
+            'exchange_rate'        => 1,
+            'issue_date'           => now(),
+            'status'               => 'draft',
+            'notes'                => implode("\n\n", $summaryParts),
+        ]);
+
+        $this->request->update(['status' => 'quoted']);
+        $this->request->refresh();
+
+        session()->flash('success', 'КП создано на основе заявки.');
+
+        $this->redirect(route('admin.quotes.edit', $quote), navigate: true);
     }
 
     public function render()

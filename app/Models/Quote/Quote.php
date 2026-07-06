@@ -19,7 +19,7 @@ class Quote extends Model
     use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
-        'number', 'customer_id', 'contact_id', 'manager_id', 'currency', 'exchange_rate',
+        'number', 'customer_id', 'contact_id', 'manager_id', 'equipment_request_id', 'currency', 'exchange_rate',
         'issue_date', 'status', 'valid_until',
         'subtotal', 'discount_percent', 'discount_total', 'vat_percent', 'vat_amount', 'total',
         'version', 'notes', 'terms',
@@ -82,6 +82,11 @@ class Quote extends Model
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    public function equipmentRequest(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Support\EquipmentRequest::class);
     }
 
     public function scopeForUser($q, int $userId)

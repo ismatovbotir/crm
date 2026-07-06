@@ -12,19 +12,14 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * NOTE: there is no Livewire CreateForm (nor any controller action) anywhere
- * in the codebase that creates an EquipmentRequest record — only
- * App\Livewire\Admin\EquipmentRequests\{Index,Show} exist, and neither has a
- * create/save action (grepped for `EquipmentRequest::create`/`new EquipmentRequest`
- * across app/ — no matches). CLAUDE.md §1.5 Module 6 describes "клиент создаёт
- * заявку через портал", but App\Livewire\Portal\Equipment\Index is a different
- * feature entirely (serial-number/device self-service tracking against
- * ProductSerial, unrelated to the `equipment_requests` table). This looks like
- * a real scope gap in the Equipment Request System module, but since it's a
- * missing feature rather than a broken one, it's reported as an observation
- * (not a bug test) — worth a decision from pm-b2b-crm on whether Portal
- * equipment-request submission is still planned. Creation below therefore
- * goes through the factory directly rather than through a Livewire component.
+ * Covers the admin/internal side of Equipment Requests (status lifecycle,
+ * manager assignment, permission checks on Admin\EquipmentRequests\Index/Show).
+ * Creation below goes through the factory directly since that's sufficient
+ * for exercising the admin-side behavior under test.
+ *
+ * Portal-side self-service creation (App\Livewire\Portal\EquipmentRequests\*)
+ * is now covered separately in
+ * Tests\Feature\Tickets\EquipmentRequestPortalCreationTest.
  */
 class EquipmentRequestTest extends TestCase
 {
