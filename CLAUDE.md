@@ -389,6 +389,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `admin/quotes/edit.blade.php`: карточка получила `height: calc(100vh - 9rem)` для sticky-зон
 - Скидка: `updatedGlobalDiscountType()` сбрасывает значение до 0 при смене типа; поле значения переведено на `wire:model.blur`
 
+### Phase 11: Test Coverage & Infra Hardening ✅ (Завершено — 2026-07-06)
+- **Тесты**: покрытие расширено с 27 до 103 тестов (94 passed / 8 failed / 1 error — непрошедшие намеренно документируют найденные баги, не флейки). Новые файлы: `tests/Feature/Catalog/{CategoryManagementTest,ProductManagementTest}.php`, `tests/Feature/Tickets/{TicketManagementTest,EquipmentRequestTest}.php`, `tests/Feature/Access/{PortalOwnershipTest,RouteSmokeTest}.php` (HTTP smoke-тест всех admin+portal маршрутов под демо-ролями). Новые фабрики: `CategoryFactory`, `ProductFactory`, `TicketFactory`, `EquipmentRequestFactory`, `TicketCommentFactory`
+- **Очереди переведены на Redis**: `.env` → `QUEUE_CONNECTION=redis` (было `database`), подтверждено сквозной проверкой (dispatch → `queue:work redis --once` → обработано)
+- **`spatie/laravel-activitylog` (v5.0.0) установлен и подключён**: трейт `LogsActivity` + `getActivitylogOptions()` добавлены в `Customer`, `Lead`, `Quote`, `Invoice` (`logOnlyDirty()`); таблица `activity_log`
+- **`TELEGRAM_BOT_TOKEN=`** добавлен как пустой placeholder в `.env`/`.env.example` — сама интеграция бота ещё не реализована
+- `php artisan migrate:fresh --seed` подтверждён рабочим end-to-end на актуальной схеме; попутно добавлено состояние `vip()` в `CustomerFactory` (использовалось `DemoLeadsSeeder`, но отсутствовало)
+- **Открытый вопрос**: 6 багов найдено во время написания тестов (Catalog policies, Products EditForm null-crash, Tickets/EquipmentRequests authorization gaps, Portal multi-company ownership edge case) — задокументированы failing-тестами, ожидают отдельного фикса
+
 ---
 
 # 🔀 Часть 1.5. Архитектура агентов (PM + субагенты)
@@ -858,7 +866,7 @@ Route::middleware(['auth', 'role:client'])->prefix('portal')->name('portal.')->g
 - `APP_KEY=...` (`php artisan key:generate`)
 - `APP_URL=http://localhost:8000`
 - `MAIL_*` для отправки писем
-- `TELEGRAM_BOT_TOKEN` (планируется)
+- `TELEGRAM_BOT_TOKEN` — пустой placeholder уже присутствует в `.env`/`.env.example`; сама интеграция бота ещё не реализована (планируется)
 
 ## 2.7. Testing
 
@@ -873,7 +881,7 @@ Route::middleware(['auth', 'role:client'])->prefix('portal')->name('portal.')->g
 - **Eager loading** (`with()`) против N+1
 - **Индексы** на foreign keys и часто фильтруемых полях
 - **Кеширование** справочников (категории, роли, настройки)
-- **Очереди** для тяжёлых задач (отправка email, генерация PDF, импорты) — Redis Queue
+- **Очереди** для тяжёлых задач (отправка email, генерация PDF, импорты) — Redis Queue (`QUEUE_CONNECTION=redis` в `.env`, подтверждено сквозной проверкой с 2026-07-06)
 - В production: `php artisan config:cache && php artisan route:cache && php artisan view:cache`
 
 ## 2.9. Security & Compliance
@@ -881,7 +889,7 @@ Route::middleware(['auth', 'role:client'])->prefix('portal')->name('portal.')->g
 - Все формы — через CSRF и Form Requests с валидацией
 - Авторизация через Policies + Spatie Permission
 - Soft deletes для критичных данных
-- Аудит-лог изменений (`spatie/laravel-activitylog` — планируется)
+- Аудит-лог изменений — `spatie/laravel-activitylog` установлен и подключён (`LogsActivity` + `logOnlyDirty()`) к `Customer`, `Lead`, `Quote`, `Invoice`; таблица `activity_log` (остальные модели — по мере необходимости)
 - Хранение реквизитов клиентов (ИНН, банк) — с учётом ПДн
 
 ## 2.10. Common Gotchas
