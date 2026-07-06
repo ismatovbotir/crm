@@ -41,4 +41,15 @@ class CustomerFactory extends Factory
             'notes'            => null,
         ];
     }
+
+    /**
+     * VIP segment customer.
+     */
+    public function vip(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'segment' => 'A',
+            'status'  => 'vip',
+        ]);
+    }
 }

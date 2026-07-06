@@ -11,10 +11,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Invoice extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'number', 'quote_id', 'customer_id', 'manager_id', 'currency', 'exchange_rate',
@@ -36,6 +38,17 @@ class Invoice extends Model
     protected static function newFactory(): \Database\Factories\InvoiceFactory
     {
         return \Database\Factories\InvoiceFactory::new();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'number', 'quote_id', 'customer_id', 'manager_id', 'status',
+                'shipment_status', 'due_date', 'total', 'paid_amount', 'sent_at',
+            ])
+            ->logOnlyDirty()
+            ->useLogName('invoice');
     }
 
     public function customer(): BelongsTo

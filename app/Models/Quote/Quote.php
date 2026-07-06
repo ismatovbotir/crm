@@ -11,10 +11,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Quote extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'number', 'customer_id', 'contact_id', 'manager_id', 'currency', 'exchange_rate',
@@ -44,6 +46,17 @@ class Quote extends Model
     protected static function newFactory(): \Database\Factories\QuoteFactory
     {
         return \Database\Factories\QuoteFactory::new();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'number', 'customer_id', 'manager_id', 'status', 'currency',
+                'total', 'valid_until', 'sent_at', 'accepted_at', 'rejected_at',
+            ])
+            ->logOnlyDirty()
+            ->useLogName('quote');
     }
 
     public function customer(): BelongsTo

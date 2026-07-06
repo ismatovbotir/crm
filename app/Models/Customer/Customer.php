@@ -12,10 +12,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Customer extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'name', 'legal_name', 'inn', 'oked',
@@ -35,6 +37,17 @@ class Customer extends Model
     protected static function newFactory(): \Database\Factories\CustomerFactory
     {
         return \Database\Factories\CustomerFactory::new();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'name', 'legal_name', 'inn', 'business_type_id', 'segment', 'status',
+                'credit_limit', 'payment_terms_days', 'bank_id', 'bank_account',
+            ])
+            ->logOnlyDirty()
+            ->useLogName('customer');
     }
 
     public function businessType(): BelongsTo

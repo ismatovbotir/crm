@@ -10,10 +10,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Lead extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'name', 'company', 'customer_id',
@@ -35,6 +37,17 @@ class Lead extends Model
     protected static function newFactory(): \Database\Factories\LeadFactory
     {
         return \Database\Factories\LeadFactory::new();
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'name', 'company', 'customer_id', 'status', 'score', 'budget',
+                'manager_id', 'source_id', 'converted_at', 'won_amount', 'lost_reason',
+            ])
+            ->logOnlyDirty()
+            ->useLogName('lead');
     }
 
     public function source(): BelongsTo
