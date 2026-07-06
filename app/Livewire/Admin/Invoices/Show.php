@@ -32,6 +32,8 @@ class Show extends Component
 
     public function mount(Invoice $invoice): void
     {
+        $this->authorize('view', $invoice);
+
         $this->invoice     = $invoice->load(['customer', 'manager', 'quote', 'items.product', 'payments', 'sells']);
         $this->paymentDate = now()->format('Y-m-d');
     }

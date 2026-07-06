@@ -216,39 +216,44 @@ Always change migration file never creat add_ or extend_ migrations
 
 ## Quotes
 
+> ⚠️ Секция актуализирована 2026-07-06 [laravel-fullstack] по факту реальных миграций/моделей — предыдущая версия описывала поля (`discount_amount`, `lead_id` на quotes, `line_total`), которых нет в коде. См. `database/migrations/2026_04_28_150000_create_quotes_table.php`, `..._150100_create_quote_items_table.php`, `..._150200_create_quote_versions_table.php`.
+
 ### `quotes` (КП)
 
 | Поле | Тип | Null | Default | Примечание |
 |------|-----|------|---------|------------|
 | id | bigint | no | auto | PK |
-| number | string(50) | no | — | UNIQUE. Format: КП-YYYY-NNNN |
+| number | string(50) | no | — | UNIQUE |
 | customer_id | bigint | no | — | FK customers, restrict |
+| manager_id | bigint | yes | null | FK users, set null |
 | contact_id | bigint | yes | null | FK contacts, set null |
-| lead_id | bigint | yes | null | FK leads (если из лида), set null |
-| manager_id | bigint | no | — | FK users, restrict |
-| status | string(20) | no | 'draft' | draft / sent / viewed / accepted / rejected / expired |
 | currency | string(3) | no | 'UZS' | UZS / USD |
-| exchange_rate | decimal(15,4) | yes | null | UZS per 1 USD на момент создания |
-| issue_date | date | no | today | |
-| valid_until | date | no | — | срок действия |
-| subtotal | decimal(15,2) | no | 0 | сумма без скидок и НДС |
-| discount_percent | decimal(5,2) | no | 0 | общая скидка % |
-| discount_amount | decimal(15,2) | no | 0 | абсолютная скидка |
-| vat_percent | decimal(5,2) | no | 12 | НДС % (UZ = 12) |
+| exchange_rate | decimal(10,4) | no | 1 | UZS per 1 USD на момент создания |
+| issue_date | date | yes | null | |
+| status | string(30) | no | 'draft' | draft / sent / viewed / accepted / rejected / expired |
+| valid_until | date | yes | null | срок действия |
+| subtotal | decimal(15,2) | no | 0 | сумма позиций до общей скидки |
+| discount_percent | decimal(5,2) | no | 0 | общая скидка % (global discount) |
+| discount_total | decimal(15,2) | no | 0 | абсолютная сумма общей скидки (**не** `discount_amount`) |
+| vat_percent | decimal(5,2) | no | 0 | НДС % (UZ = 12; дефолт колонки 0, выставляется в коде) |
 | vat_amount | decimal(15,2) | no | 0 | сумма НДС |
 | total | decimal(15,2) | no | 0 | финальная сумма |
+| version | smallint unsigned | no | 1 | для версионирования |
+| notes | text | yes | null | внутренние заметки |
 | terms | text | yes | null | условия оплаты, сроки, гарантия |
-| notes | text | yes | null | внутренние заметки (не видны клиенту) |
 | sent_at | timestamp | yes | null | |
 | viewed_at | timestamp | yes | null | первый просмотр клиентом |
 | accepted_at | timestamp | yes | null | |
-| version | int | no | 1 | для версионирования |
-| pdf_path | string(255) | yes | null | путь к сгенерированному PDF |
+| rejected_at | timestamp | yes | null | |
 | deleted_at | timestamp | yes | null | soft delete |
 | timestamps | | | | |
 
-**Индексы**: `number` UNIQUE, `customer_id`, `manager_id`, `status`, `valid_until`
-**Связи**: `customer()`, `contact()`, `lead()`, `manager()`, `items()` (HasMany QuoteItem), `versions()` (HasMany QuoteVersion), `invoices()` (HasMany)
+Нет колонок `lead_id` и `pdf_path` в реальной схеме (PDF генерируется on-the-fly через `PdfService`, не сохраняется).
+
+**Индексы**: `number` UNIQUE, `customer_id`, `manager_id`, `status`
+**Связи** (`App\Models\Quote\Quote`): `customer()`, `manager()` (`User`, FK `manager_id`), `items()` (HasMany QuoteItem, ordered by `sort_order`), `versions()` (HasMany QuoteVersion, latest first), `invoice()` (HasOne Invoice — один Invoice на Quote, не HasMany)
+**Scopes**: `scopeForUser($userId)` (по `manager_id`), `scopeByStatus($status)`
+**Прочее**: `isEditable()` — true только для статуса `draft`
 
 ### `quote_items` (позиции КП)
 
@@ -257,17 +262,18 @@ Always change migration file never creat add_ or extend_ migrations
 | id | bigint | no | auto | PK |
 | quote_id | bigint | no | — | FK quotes, cascade |
 | product_id | bigint | yes | null | FK products, set null (если товар удалён) |
-| sku | string(100) | no | — | копия SKU на момент создания |
 | name | string(255) | no | — | копия названия (snapshot) |
+| sku | string(100) | yes | null | копия SKU на момент создания |
 | description | text | yes | null | |
-| quantity | int | no | 1 | |
+| quantity | int unsigned | no | 1 | |
 | unit_price | decimal(15,2) | no | — | цена за единицу |
-| discount_percent | decimal(5,2) | no | 0 | скидка на позицию |
-| line_total | decimal(15,2) | no | — | qty * price * (1 - disc/100) |
-| sort_order | int | no | 0 | |
+| discount_percent | decimal(5,2) | no | 0 | скидка на позицию, % |
+| final_price | decimal(15,2) | no | — | **NOT NULL, без дефолта.** Цена за единицу после применения скидки на позицию. Должен быть в `$fillable`/`$casts` модели (исправлено 2026-07-06 — раньше отсутствовал в `$fillable`, что ломало создание любого КП с позициями через mass-assignment) |
+| total | decimal(15,2) | no | — | итог по строке (**не** `line_total`) |
+| sort_order | smallint unsigned | no | 0 | |
 | timestamps | | | | |
 
-**Индексы**: `quote_id`, `product_id`, `sort_order`
+**Индексы**: `quote_id`, `product_id`
 **Связи**: `quote()`, `product()`
 
 ### `quote_versions` (история версий КП)
@@ -276,49 +282,71 @@ Always change migration file never creat add_ or extend_ migrations
 |------|-----|------|---------|------------|
 | id | bigint | no | auto | PK |
 | quote_id | bigint | no | — | FK quotes, cascade |
-| version | int | no | — | номер версии |
-| snapshot | json | no | — | полный snapshot quote + items |
-| created_by | bigint | yes | null | FK users, set null |
-| created_at | timestamp | no | now | |
+| version | smallint unsigned | no | — | номер версии |
+| items_snapshot | json | no | — | снимок позиций (**не** `snapshot`) |
+| total | decimal(15,2) | no | — | итог версии |
+| created_by | bigint | no | — | FK users (restrict, не set null) |
+| timestamps | | | | |
 
-**Индексы**: `quote_id, version` UNIQUE
+**Индексы**: `quote_id`
+**Связи**: `quote()`, `creator()` (`User`, FK `created_by`)
 
 ---
 
 ## Invoices
+
+> ⚠️ Секция актуализирована 2026-07-06 [laravel-fullstack] по факту реальных миграций/моделей. См. `database/migrations/2026_04_28_150300_create_invoices_table.php`, `..._150400_create_invoice_items_table.php`, `..._150500_create_payments_table.php`.
 
 ### `invoices`
 
 | Поле | Тип | Null | Default | Примечание |
 |------|-----|------|---------|------------|
 | id | bigint | no | auto | PK |
-| number | string(50) | no | — | UNIQUE. Format: INV-YYYY-NNNN |
-| customer_id | bigint | no | — | FK customers, restrict |
+| number | string(50) | no | — | UNIQUE |
+| agreement_number | string | yes | null | номер договора для бухгалтерии (не в `$fillable` модели — пока не используется в коде) |
+| batch_number | int | no | 1 | номер партии/спецификации для выгрузки в 1С (не в `$fillable` модели) |
 | quote_id | bigint | yes | null | FK quotes, set null (если из КП) |
-| manager_id | bigint | no | — | FK users, restrict |
-| status | string(20) | no | 'draft' | draft / sent / partially_paid / paid / overdue / cancelled |
+| customer_id | bigint | no | — | FK customers, restrict |
+| manager_id | bigint | yes | null | FK users, set null |
 | currency | string(3) | no | 'UZS' | |
-| issue_date | date | no | today | |
-| due_date | date | no | — | срок оплаты |
+| exchange_rate | decimal(10,4) | no | 1 | |
+| status | string(30) | no | 'draft' | draft / sent / partially_paid / paid / overdue / cancelled |
+| due_date | date | yes | null | срок оплаты |
 | subtotal | decimal(15,2) | no | 0 | |
-| vat_percent | decimal(5,2) | no | 12 | |
-| vat_amount | decimal(15,2) | no | 0 | |
+| tax_rate | decimal(5,2) | no | 12 | НДС %, UZ (**не** `vat_percent`) |
+| tax_amount | decimal(15,2) | no | 0 | сумма НДС (**не** `vat_amount`) |
 | total | decimal(15,2) | no | 0 | |
 | paid_amount | decimal(15,2) | no | 0 | сумма оплачено |
-| balance | decimal(15,2) | no | 0 | total - paid_amount (computed) |
-| paid_at | timestamp | yes | null | дата полного закрытия |
-| cancelled_at | timestamp | yes | null | |
-| cancel_reason | string(255) | yes | null | |
-| pdf_path | string(255) | yes | null | |
+| shipment_status | string(20) | no | 'none' | none / partial / complete — статус отгрузки (связка с модулем Sells; нет полей `balance`/`paid_at`/`cancelled_at`/`cancel_reason`/`pdf_path` — их не существует) |
+| notes | text | yes | null | |
+| sent_at | timestamp | yes | null | |
 | deleted_at | timestamp | yes | null | soft delete |
 | timestamps | | | | |
 
-**Индексы**: `number` UNIQUE, `customer_id`, `status`, `due_date`
-**Связи**: `customer()`, `quote()`, `manager()`, `items()`, `payments()`
+**Индексы**: `number` UNIQUE, `customer_id`, `manager_id`, `status`, `quote_id`
+**Связи** (`App\Models\Invoice\Invoice`): `customer()`, `manager()`, `quote()` (BelongsTo), `items()` (HasMany InvoiceItem, ordered by `sort_order`), `payments()` (HasMany, ordered by `paid_at`), `sells()` (HasMany `App\Models\Sell\Sell`, ordered by `sold_at`), `productReturns()` (HasMany `App\Models\Sell\ProductReturn`, FK `invoice_id`)
+**Accessors**: `remaining` — `total - paid_amount` (bcsub, computed on the fly, не хранится в колонке `balance`)
+**Scopes**: `scopeOverdue()` (due_date < now, статус не paid/cancelled), `scopeForUser($userId)` (по `manager_id`)
+**Авторизация**: `InvoicePolicy::view()` — ownership по `manager_id` для sales-manager; проверяется в `Livewire\Admin\Invoices\Show::mount()` (добавлено 2026-07-06 — ранее отсутствовало, IDOR)
 
 ### `invoice_items`
 
-Аналогично quote_items: id, invoice_id, product_id, sku, name, quantity, unit_price, line_total, sort_order, timestamps.
+| Поле | Тип | Null | Default | Примечание |
+|------|-----|------|---------|------------|
+| id | bigint | no | auto | PK |
+| invoice_id | bigint | no | — | FK invoices, cascade |
+| product_id | bigint | yes | null | FK products, set null |
+| name | string(255) | no | — | |
+| sku | string(100) | yes | null | |
+| quantity | int unsigned | no | 1 | |
+| unit_price | decimal(15,2) | no | — | |
+| tax_rate | decimal(5,2) | no | 0 | НДС на позицию (нет `discount_percent`/`final_price` — в отличие от `quote_items`) |
+| total | decimal(15,2) | no | — | итог по строке (**не** `line_total`) |
+| sort_order | smallint unsigned | no | 0 | |
+| timestamps | | | | |
+
+**Индексы**: `invoice_id`
+**Связи**: `invoice()`, `product()`
 
 ### `payments`
 
@@ -326,16 +354,18 @@ Always change migration file never creat add_ or extend_ migrations
 |------|-----|------|---------|------------|
 | id | bigint | no | auto | PK |
 | invoice_id | bigint | no | — | FK invoices, cascade |
-| amount | decimal(15,2) | no | — | UZS |
-| paid_at | date | no | today | дата платежа |
-| method | string(30) | no | 'bank' | bank / cash / card / other |
-| reference | string(100) | yes | null | номер платёжки |
+| amount | decimal(15,2) | no | — | |
+| currency | string(3) | no | 'UZS' | |
+| paid_at | date | no | — | дата платежа |
+| method | string(30) | no | 'bank_transfer' | bank_transfer / cash / card (**не** `'bank'`) |
+| fiscal | string(200) | yes | null | фискальный чек/QR (не в `$fillable` модели — не используется в коде пока) |
+| reference | string(255) | yes | null | номер платёжки |
 | notes | text | yes | null | |
-| created_by | bigint | yes | null | FK users, set null |
+| recorded_by | bigint | yes | null | FK users, set null (**не** `created_by`) |
 | timestamps | | | | |
 
-**Индексы**: `invoice_id`, `paid_at`
-**Связи**: `invoice()`, `creator()`
+**Индексы**: `invoice_id`, `paid_at`, `recorded_by`
+**Связи**: `invoice()`, `recordedBy()` (`User`, FK `recorded_by`)
 
 ---
 

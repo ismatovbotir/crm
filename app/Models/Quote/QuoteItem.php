@@ -10,13 +10,14 @@ class QuoteItem extends Model
 {
     protected $fillable = [
         'quote_id', 'product_id', 'name', 'sku', 'description', 'quantity',
-        'unit_price', 'discount_percent', 'total', 'sort_order',
+        'unit_price', 'discount_percent', 'final_price', 'total', 'sort_order',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'unit_price' => 'decimal:2',
         'discount_percent' => 'decimal:2',
+        'final_price' => 'decimal:2',
         'total' => 'decimal:2',
         'sort_order' => 'integer',
     ];
