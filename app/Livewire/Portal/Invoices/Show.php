@@ -11,8 +11,12 @@ class Show extends Component
 
     public function mount(Invoice $invoice): void
     {
-        $customer = auth()->user()->customers()->first();
-        abort_unless($customer && $invoice->customer_id === $customer->id, 403);
+        // Check that this invoice belongs to ANY of the user's companies (not just the first one).
+        abort_unless(
+            auth()->user()->customers()->where('customers.id', $invoice->customer_id)->exists(),
+            403
+        );
+
         $this->invoice = $invoice;
     }
 

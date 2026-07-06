@@ -24,10 +24,19 @@ class EditForm extends Component
         $this->categoryId = $categoryId;
         $this->category = Category::findOrFail($categoryId);
         $this->authorize('update', $this->category);
-        $this->fill($this->category->only([
+        $attributes = $this->category->only([
             'name_ru', 'name_uz', 'slug', 'parent_id', 'icon',
             'sort_order', 'is_active',
-        ]));
+        ]);
+
+        // Nullable DB columns (name_uz, icon) may legitimately be null;
+        // coalesce to '' to match the string-typed props, consistent with
+        // CreateForm's string-based fields.
+        foreach (['name_uz', 'icon'] as $nullableField) {
+            $attributes[$nullableField] = $attributes[$nullableField] ?? '';
+        }
+
+        $this->fill($attributes);
     }
 
     protected function rules(): array

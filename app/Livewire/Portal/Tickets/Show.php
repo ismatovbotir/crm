@@ -13,8 +13,12 @@ class Show extends Component
 
     public function mount(Ticket $ticket): void
     {
-        $customer = auth()->user()->customers()->first();
-        abort_unless($customer && $ticket->customer_id === $customer->id, 403);
+        // Check that this ticket belongs to ANY of the user's companies (not just the first one).
+        abort_unless(
+            auth()->user()->customers()->where('customers.id', $ticket->customer_id)->exists(),
+            403
+        );
+
         $this->ticket = $ticket;
     }
 

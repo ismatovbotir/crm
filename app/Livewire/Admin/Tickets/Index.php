@@ -18,6 +18,11 @@ class Index extends Component
 
     protected $queryString = ['search' => ['except' => ''], 'statusFilter' => ['except' => ''], 'priorityFilter' => ['except' => '']];
 
+    public function mount(): void
+    {
+        $this->authorize('viewAny', Ticket::class);
+    }
+
     public function getTicketsProperty()
     {
         $q = Ticket::with(['customer', 'category', 'assignee'])

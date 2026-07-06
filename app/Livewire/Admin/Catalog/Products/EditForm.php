@@ -36,11 +36,20 @@ class EditForm extends Component
         $this->product = Product::with('prices')->findOrFail($productId);
         $this->authorize('update', $this->product);
 
-        $this->fill($this->product->only([
+        $attributes = $this->product->only([
             'sku', 'name_ru', 'name_uz', 'brand', 'model_number',
             'description_ru', 'category_id', 'unit',
             'is_active', 'is_visible_portal', 'is_serial',
-        ]));
+        ]);
+
+        // Nullable DB columns (name_uz, brand, model_number, description_ru) may
+        // legitimately be null; coalesce to '' to match the string-typed props,
+        // consistent with CreateForm's string-based fields.
+        foreach (['name_uz', 'brand', 'model_number', 'description_ru'] as $nullableField) {
+            $attributes[$nullableField] = $attributes[$nullableField] ?? '';
+        }
+
+        $this->fill($attributes);
 
         // Load existing prices into form fields
         foreach ($this->product->prices as $price) {

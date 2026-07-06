@@ -59,6 +59,8 @@ class CreateForm extends Component
 
     public function save(): void
     {
+        $this->authorize('create', Ticket::class);
+
         $data = $this->validate();
 
         $serialId = null;

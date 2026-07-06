@@ -16,6 +16,11 @@ class Index extends Component
     public string $statusFilter = '';
     public string $managerFilter = '';
 
+    public function mount(): void
+    {
+        abort_unless(auth()->user()->can('equipment-requests.view'), 403);
+    }
+
     public function updatingSearch(): void { $this->resetPage(); }
     public function updatingStatusFilter(): void { $this->resetPage(); }
     public function updatingManagerFilter(): void { $this->resetPage(); }
