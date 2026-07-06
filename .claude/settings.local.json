@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(New-Item -ItemType Directory -Force -Path \"D:\\\\laragon\\\\www\\\\RSG-CRM\\\\app\\\\Livewire\\\\Admin\\\\Returns\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"Directory ready\")",
+      "Bash(New-Item -ItemType Directory -Force -Path \"D:\\\\laragon\\\\www\\\\RSG-CRM\\\\resources\\\\views\\\\livewire\\\\admin\\\\catalog\\\\groups\")",
+      "Bash(New-Item -ItemType Directory -Force -Path \"D:\\\\laragon\\\\www\\\\RSG-CRM\\\\resources\\\\views\\\\livewire\\\\admin\\\\catalog\\\\recommendations\")",
+      "Bash(Write-Host \"Directories created\")",
+      "Bash(cd /d \"D:\\\\laragon\\\\www\\\\RSG-CRM\")",
+      "Bash(php artisan *)"
+    ]
+  }
+}
