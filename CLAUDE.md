@@ -191,10 +191,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Категоризация (тип оборудования)
 - Назначение ответственного менеджера
 - Статусы: `Submitted → Under Review → Quoted → Closed`
+- Переписка по заявке: внутренние (только сотрудники) и публичные (видны клиенту) комментарии — аналогично тикетам
 - Прикреплённые файлы (тех. требования, фото)
 
 **Ключевые сущности**:
 - `EquipmentRequest`
+- `EquipmentRequestComment`
 - `RequestCategory`
 
 ---
@@ -396,6 +398,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **`TELEGRAM_BOT_TOKEN=`** добавлен как пустой placeholder в `.env`/`.env.example` — сама интеграция бота ещё не реализована
 - `php artisan migrate:fresh --seed` подтверждён рабочим end-to-end на актуальной схеме; попутно добавлено состояние `vip()` в `CustomerFactory` (использовалось `DemoLeadsSeeder`, но отсутствовало)
 - **Открытый вопрос**: 6 багов найдено во время написания тестов (Catalog policies, Products EditForm null-crash, Tickets/EquipmentRequests authorization gaps, Portal multi-company ownership edge case) — задокументированы failing-тестами, ожидают отдельного фикса
+
+### Phase 12: Equipment Request — portal self-service + реальная конвертация в КП ✅ (Завершено — 2026-07-06)
+- **Portal self-service**: `App\Livewire\Portal\EquipmentRequests\{CreateForm,Index,Show}` — клиент подаёт заявку на оборудование (`subject`, `description`, `budget`, `needed_by`), видит пагинированную историю заявок своей компании, открывает карточку заявки с перепиской. Роуты `portal.equipment-requests.{index,create,show}` — в существующей группе `role:client-admin|client-user`, без новых permissions (портал по-прежнему гейтится только route-middleware). Пункт "Заявки на оборудование" добавлен в `resources/views/portal/partials/sidebar.blade.php`.
+- **Реальная конвертация в КП**: `App\Livewire\Admin\EquipmentRequests\Show::convertToQuote()` (была заглушкой — просто редирект на список КП без создания записи) теперь создаёт настоящий `Quote` (номер `КП-YYYY-####`, notes/terms предзаполнены из заявки, `equipment_request_id` проставлен), идемпотентна (повторный клик не дублирует КП), автоматически переводит `EquipmentRequest.status` в `quoted`, редиректит в `Quotes\EditForm` для добавления позиций.
+- **Схема**: `quotes.equipment_request_id` — настоящий nullable FK (`nullOnDelete`) на `equipment_requests` (было — индексированная колонка без DB-constraint из-за порядка миграций; файл миграции `equipment_requests` переупорядочен раньше `quotes`/`invoices`/`tickets`, чтобы FK стал реальным). `Quote::equipmentRequest()` / `EquipmentRequest::quote()` — связи в обе стороны. Кросс-ссылки ("Оформлено из заявки #X" / ссылка на итоговый КП) — на admin и portal show-страницах обеих сущностей.
+- **Переписка по заявке**: новая таблица `equipment_request_comments` + модель `App\Models\Support\EquipmentRequestComment` (структурно как `TicketComment`: `is_internal` разделяет внутренние заметки и видимые клиенту ответы). `EquipmentRequest::comments()`/`publicComments()` добавлены. Admin-форма может постить оба типа комментариев; portal — только публичные (жёстко в коде, без переключателя на клиенте).
+- **Вне скоупа этой фазы** (не реализовано, аспирационные пункты Модуля 6 остаются открытыми): вложения файлов к заявке (`EquipmentRequestAttachment`), категоризация (`category_id`/`RequestCategory`). Новый `Order`/Cart-объект тоже не создавался — "заказ" из Модуля 8 по-прежнему реализуется только через конвертацию заявки в КП, описанную выше.
 
 ---
 
@@ -792,7 +801,7 @@ Route::middleware(['auth', 'role:internal'])->prefix('admin')->name('admin.')->g
   - `App\Models\Catalog\` — Product, Category, ProductPrice, ProductStock (Phase 3)
   - `App\Models\Quote\` — Quote, QuoteItem, QuoteVersion (Phase 4)
   - `App\Models\Invoice\` — Invoice, InvoiceItem, Payment (Phase 4)
-  - `App\Models\Support\` — Ticket, TicketComment, TicketAttachment, EquipmentRequest (Phase 5)
+  - `App\Models\Support\` — Ticket, TicketComment, TicketAttachment, EquipmentRequest (Phase 5), EquipmentRequestComment (Phase 12)
 - **Правило**: каждый новый model создаётся в поддиректории своего домена
 - Каждый model с factory должен переопределять `newFactory()`:
   ```php

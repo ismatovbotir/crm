@@ -25,7 +25,7 @@ Always change migration file never creat add_ or extend_ migrations
 4. [Quotes (КП)](#quotes) — Quote, QuoteItem, QuoteVersion
 5. [Invoices](#invoices) — Invoice, InvoiceItem, Payment
 6. [Catalog](#catalog) — ProductGroup, Category, CategoryAttribute, Product, ProductTranslation, ProductAttributeValue, ProductPrice, ProductStock, ProductImage, ProductAttachment, BusinessTypeRecommendation
-7. [Equipment Requests](#equipment-requests) — EquipmentRequest, RequestCategory
+7. [Equipment Requests](#equipment-requests) — EquipmentRequest
 8. [Tickets](#tickets) — Ticket, TicketComment, TicketAttachment, TicketCategory
 9. [Product Returns](#product-returns) — ProductReturn, ReturnItem
 10. [System](#system) — Setting, ActivityLog (`activity_log`), Notification
@@ -227,6 +227,7 @@ Always change migration file never creat add_ or extend_ migrations
 | customer_id | bigint | no | — | FK customers, restrict |
 | manager_id | bigint | yes | null | FK users, set null |
 | contact_id | bigint | yes | null | FK contacts, set null |
+| equipment_request_id | bigint | yes | null | если КП создан из заявки на оборудование. **Реальный DB-level FK** → `equipment_requests`, `nullOnDelete()` (исправлено 2026-07-06 [ticket-system] — `equipment_requests` перенесена на более раннюю миграцию `2026_04_28_141300` (сразу после `serial_owners`, перед `quotes`), что позволило добавить настоящий constraint вместо голой indexed-колонки) |
 | currency | string(3) | no | 'UZS' | UZS / USD |
 | exchange_rate | decimal(10,4) | no | 1 | UZS per 1 USD на момент создания |
 | issue_date | date | yes | null | |
@@ -250,8 +251,8 @@ Always change migration file never creat add_ or extend_ migrations
 
 Нет колонок `lead_id` и `pdf_path` в реальной схеме (PDF генерируется on-the-fly через `PdfService`, не сохраняется).
 
-**Индексы**: `number` UNIQUE, `customer_id`, `manager_id`, `status`
-**Связи** (`App\Models\Quote\Quote`): `customer()`, `manager()` (`User`, FK `manager_id`), `items()` (HasMany QuoteItem, ordered by `sort_order`), `versions()` (HasMany QuoteVersion, latest first), `invoice()` (HasOne Invoice — один Invoice на Quote, не HasMany)
+**Индексы**: `number` UNIQUE, `customer_id`, `manager_id`, `status`, `equipment_request_id`
+**Связи** (`App\Models\Quote\Quote`): `customer()`, `manager()` (`User`, FK `manager_id`), `items()` (HasMany QuoteItem, ordered by `sort_order`), `versions()` (HasMany QuoteVersion, latest first), `invoice()` (HasOne Invoice — один Invoice на Quote, не HasMany), `equipmentRequest()` (BelongsTo `App\Models\Support\EquipmentRequest`)
 **Scopes**: `scopeForUser($userId)` (по `manager_id`), `scopeByStatus($status)`
 **Прочее**: `isEditable()` — true только для статуса `draft`
 
@@ -615,37 +616,56 @@ Append-only лог — только `created_at`, без `updated_at`.
 
 ## Equipment Requests
 
-### `request_categories` (справочник)
-
-| Поле | Тип | Null | Default | Примечание |
-|------|-----|------|---------|------------|
-| id | bigint | no | auto | PK |
-| name | string(100) | no | — | |
-| slug | string(50) | no | — | UNIQUE |
-| is_active | boolean | no | true | |
-| timestamps | | | | |
+> ⚠️ Секция актуализирована 2026-07-06 [ticket-system] по факту реальных миграций/моделей — предыдущая версия описывала таблицу `request_categories` (не существует) и поля (`number`, `contact_id`, `category_id`, `title`, `deadline`, `quote_id`, `closed_at`), которых нет в коде. См. `database/migrations/2026_04_28_141300_create_equipment_requests_table.php` и `app/Models/Support/EquipmentRequest.php`.
+>
+> **2026-07-06 [ticket-system]**: миграция `equipment_requests` перенесена с таймстампа `2026_04_28_160400` на `2026_04_28_141300` (сразу после `serial_owners`, до `quotes`/`tickets`) — это позволило добавить настоящий DB-level FK `quotes.equipment_request_id → equipment_requests.id` вместо голой indexed-колонки.
 
 ### `equipment_requests`
 
 | Поле | Тип | Null | Default | Примечание |
 |------|-----|------|---------|------------|
 | id | bigint | no | auto | PK |
-| number | string(50) | no | — | UNIQUE. ER-YYYY-NNNN |
-| customer_id | bigint | no | — | FK customers, restrict |
-| contact_id | bigint | yes | null | FK contacts, set null |
-| category_id | bigint | yes | null | FK request_categories, set null |
-| title | string(255) | no | — | |
-| description | text | no | — | |
+| customer_id | bigint | yes | null | FK customers, nullOnDelete |
+| manager_id | bigint | yes | null | FK users, nullOnDelete |
+| subject | string(500) | no | — | что нужно клиенту |
+| description | text | yes | null | |
 | budget | decimal(15,2) | yes | null | |
-| deadline | date | yes | null | |
-| status | string(20) | no | 'submitted' | submitted / under_review / quoted / closed |
-| manager_id | bigint | yes | null | FK users, set null |
-| quote_id | bigint | yes | null | FK quotes — если конвертирован, set null |
-| closed_at | timestamp | yes | null | |
+| needed_by | date | yes | null | |
+| status | string(30) | no | 'submitted' | submitted / under_review / quoted / closed |
+| notes | text | yes | null | внутренние заметки менеджера |
+| deleted_at | timestamp | yes | null | soft delete |
 | timestamps | | | | |
 
-**Индексы**: `number` UNIQUE, `customer_id`, `status`, `manager_id`
-**Связи**: `customer()`, `contact()`, `category()`, `manager()`, `quote()`, `attachments()` (полиморфно)
+**Индексы**: нет составных дополнительно к FK (см. миграцию)
+**Связи**: `customer()` (BelongsTo Customer), `manager()` (BelongsTo User), `quote()` (HasOne `App\Models\Quote\Quote`, реципрокно `Quote::equipmentRequest()`), `comments()` (HasMany EquipmentRequestComment, latest first), `publicComments()` (HasMany EquipmentRequestComment где `is_internal=false`, latest first) — добавлено 2026-07-06 [ticket-system]. Нет `contact()`, `category()`, `attachments()`.
+**Модель**: `App\Models\Support\EquipmentRequest`
+**Scope**: `scopeByStatus($status)`
+
+**Известные пробелы (не баги, а backlog)**:
+- Нет подсистемы вложений (`EquipmentRequestAttachment`) — файлы прикрепить нельзя.
+- Нет категоризации (`category_id`) — в отличие от Tickets, у заявок на оборудование категорий нет.
+
+**Конвертация в `Quote` (обновлено 2026-07-06 [ticket-system])**: реальная FK-связь `quotes.equipment_request_id → equipment_requests.id` (`nullOnDelete`). `App\Livewire\Admin\EquipmentRequests\Show::convertToQuote()` создаёт `Quote::create()` (номер по стандартному паттерну `КП-YYYY-NNNN`, `status='draft'`, `notes` — авто-сформированное summary из subject/description/budget/needed_by), автоматически переводит `EquipmentRequest::status` в `'quoted'` и редиректит менеджера на `admin.quotes.edit` для добавления позиций. Идемпотентно: если `quote()` уже существует — просто редиректит на существующий КП без дублирования.
+
+**Portal-доступ (добавлено 2026-07-06 [ticket-system])**: клиент подаёт заявку через `App\Livewire\Portal\EquipmentRequests\CreateForm` (`/portal/equipment-requests/create`), видит историю своих заявок через `App\Livewire\Portal\EquipmentRequests\Index` (`/portal/equipment-requests`) и карточку через `App\Livewire\Portal\EquipmentRequests\Show` (`/portal/equipment-requests/{equipmentRequest}`). `customer_id` всегда резолвится на сервере из `auth()->user()->customers()->first()->id`, `manager_id` остаётся `null` до назначения в admin-панели.
+
+### `equipment_request_comments` (переписка по заявке — добавлено 2026-07-06 [ticket-system])
+
+Зеркалирует `ticket_comments`: внутренние заметки сотрудников (`is_internal=true`, не видны клиенту) и публичные ответы (видны клиенту и сотрудникам). Клиент через портал всегда создаёт только `is_internal=false` (сервер не доверяет и не принимает toggle от клиента).
+
+| Поле | Тип | Null | Default | Примечание |
+|------|-----|------|---------|------------|
+| id | bigint | no | auto | PK |
+| equipment_request_id | bigint | no | — | FK equipment_requests, cascade |
+| user_id | bigint | no | — | FK users (без onDelete-стратегии, как и `ticket_comments.user_id`) |
+| body | text | no | — | |
+| is_internal | boolean | no | false | внутренняя заметка (не видна клиенту) |
+| timestamps | | | | |
+
+**Индексы**: `equipment_request_id`
+**Связи**: `equipmentRequest()` (BelongsTo EquipmentRequest), `user()` (BelongsTo User)
+**Модель**: `App\Models\Support\EquipmentRequestComment`
+**UI**: admin-сторона — `App\Livewire\Admin\EquipmentRequests\Show::addComment()` (чекбокс `isInternal`, по умолчанию false); portal-сторона — `App\Livewire\Portal\EquipmentRequests\Show::addComment()` (всегда `is_internal=false`, рендерит только `publicComments()`).
 
 ---
 
@@ -862,8 +882,8 @@ products ──┬── product_prices
            ├── quote_items
            └── invoice_items
 
-equipment_requests ──→ quotes (конвертация)
-request_categories ── equipment_requests
+equipment_requests ──┬── equipment_request_comments
+                     └── quotes (1:1, реальный FK `quotes.equipment_request_id`, nullOnDelete — конвертация через Show::convertToQuote(), см. секцию Equipment Requests)
 
 tickets ──┬── ticket_comments
           └── ticket_attachments
