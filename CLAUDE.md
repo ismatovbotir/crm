@@ -299,7 +299,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 1.7. Этапы разработки (Roadmap)
 
 ### Phase 0: Foundation ✅ (Завершено)
-- Laravel scaffold (10.10 + Livewire 4.2 + Sanctum)
+- Laravel scaffold (13.18 + Livewire 4.3 + Sanctum пакет установлен)
 - Структура проекта, документация, .claude конфигурация
 
 ### Phase 1: Auth & Roles ✅ (Завершено)
@@ -457,13 +457,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 2.1. Project Overview
 
-**RSG-CRM** — Laravel 10 application (CRM + customer portal) для компании RSG (торговое оборудование и автоматизация ритейла).
+**RSG-CRM** — Laravel 13 application (CRM + customer portal) для компании RSG (торговое оборудование и автоматизация ритейла).
 
-- **Backend**: Laravel 10.10 + Livewire 4.2
-- **API**: Laravel Sanctum (token-based auth)
+- **Backend**: Laravel 13.18 + Livewire 4.3
+- **API**: пакет `laravel/sanctum` установлен, но `routes/api.php` пока пустой — API-контроллеров и эндпоинтов не реализовано
 - **Frontend Assets**: Vite (JS/CSS bundling)
 - **Database**: MySQL
-- **PHP**: 8.1+
+- **PHP**: 8.4+
 
 ## 2.2. Development Commands
 
