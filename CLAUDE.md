@@ -376,9 +376,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Phase 9: UI Polish ✅ (Завершено — 2026-05-05)
 - `<x-modal>` и `<x-slide-over>`: кнопки Cancel+Save перенесены в хедер справа, X кнопка убрана
-- Leads kanban: исправлен горизонтальный скролл, добавлена `max-height` для независимой прокрутки столбцов
-- Leads kanban toggle: добавлен `type="button"`, `viewMode` убран из `$queryString`; данные канбана перенесены из computed-property в `render()`
 - Leads таблица: кнопка "Удалить" убрана; edit-modal теперь использует `@entangle('showEditForm')` вместо `@if` — надёжный показ без race condition
+- **Исправление документационного дрейфа (2026-07-07)**: эта запись изначально содержала ещё два пункта про "Leads kanban" (фикс горизонтального скролла/`max-height`, фикс toggle `type="button"`/`$queryString`/`render()`) — аудит модуля Leads от 2026-07-07 грепом по всему коду подтвердил, что никакого Kanban-режима на момент этой фазы физически не существовало (`Index.php`/Blade были чисто табличными). Пункты были ошибочно задокументированы для несуществующего функционала и удалены отсюда. Реальная первая реализация Leads Kanban — см. Phase 14 (2026-07-07).
 
 ### Phase 10: Documents unified form + Quote edit ✅ (Завершено — 2026-05-11)
 - `DatabaseSeeder`: demo seeders обёрнуты в `app()->environment(['local','development'])` guard
@@ -405,6 +404,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Схема**: `quotes.equipment_request_id` — настоящий nullable FK (`nullOnDelete`) на `equipment_requests` (было — индексированная колонка без DB-constraint из-за порядка миграций; файл миграции `equipment_requests` переупорядочен раньше `quotes`/`invoices`/`tickets`, чтобы FK стал реальным). `Quote::equipmentRequest()` / `EquipmentRequest::quote()` — связи в обе стороны. Кросс-ссылки ("Оформлено из заявки #X" / ссылка на итоговый КП) — на admin и portal show-страницах обеих сущностей.
 - **Переписка по заявке**: новая таблица `equipment_request_comments` + модель `App\Models\Support\EquipmentRequestComment` (структурно как `TicketComment`: `is_internal` разделяет внутренние заметки и видимые клиенту ответы). `EquipmentRequest::comments()`/`publicComments()` добавлены. Admin-форма может постить оба типа комментариев; portal — только публичные (жёстко в коде, без переключателя на клиенте).
 - **Вне скоупа этой фазы** (не реализовано, аспирационные пункты Модуля 6 остаются открытыми): вложения файлов к заявке (`EquipmentRequestAttachment`), категоризация (`category_id`/`RequestCategory`). Новый `Order`/Cart-объект тоже не создавался — "заказ" из Модуля 8 по-прежнему реализуется только через конвертацию заявки в КП, описанную выше.
+
+### Phase 13: Roles Management UI (`/admin/settings/roles`) ✅ (Завершено — 2026-07-07)
+- Новая страница только для `super-admin`: `App\Livewire\Admin\Settings\Roles` — просмотр всех ролей системы и редактирование их permissions чеклистом, сгруппированным по `config('permissions.permissions')`; `savePermissions()` делает `$role->syncPermissions([...])` с белым списком permission-ключей из конфига. Роут `admin.settings.roles` добавлен в уже существующую группу `role:super-admin` (не в группу с permission-гейтом) — намеренно: страница, редактирующая permissions, не должна гейтиться permission-строкой, которую сама же может изменить (риск self-lockout/privilege-escalation). Контроллер `App\Http\Controllers\Admin\Settings\RoleController`, Blade `resources/views/admin/settings/roles.blade.php` + `resources/views/livewire/admin/settings/roles.blade.php`, пункт "Роли и права" в сайдбаре (гейтится явной проверкой `hasRole('super-admin')`, а не через `@acl`, по той же причине).
+- **Locked-роли**: `super-admin`, `client-admin`, `client-user` показываются в списке, но не редактируются через эту UI (серверный guard, 403 при попытке). `super-admin` навсегда остаётся wildcard `*` — гарантированный путь восстановления доступа. `client-admin`/`client-user` остаются без module permissions — их доступ в портале ownership-based, а не через Spatie permissions.
+- **`database/seeders/RolesSeeder.php` — новая аддитивная семантика**: для роли, уже существующей в БД до текущего запуска сидера, `syncPermissions()` заменён на `givePermissionTo()` — обычный `migrate:fresh --seed` (см. §2.2) больше не стирает ручные правки permissions, сделанные через `/admin/settings/roles`. Для реально новой роли поведение не изменилось (`syncPermissions()`, точный снимок конфига). `config/permissions.php` остаётся гарантированным **минимумом** для каждой роли; обратная сторона — если permission позже удаляется из конфига, сидер больше не отзовёт его у ролей, уже получивших его в БД (осознанный trade-off).
+- Тесты: `tests/Feature/Access/RolePermissionsManagementTest.php` (19 тестов) — доступ только super-admin, персист toggle permission, guard на locked-ролях, рендер всех 8 ролей, регрессия на аддитивность сидера. `php artisan test`: **184 passed** (было 165).
+
+### Phase 14: Leads Kanban (реальная реализация) + чистка мёртвого CSV-экспорта ✅ (Завершено — 2026-07-07)
+- **Удалён мёртвый код CSV-экспорта лидов**: роут `admin.export.leads` (`routes/web.php`), метод `ExportController::leads()` (`app/Http/Controllers/Admin/ExportController.php`), permission `leads.export` (`config/permissions.php`, из группы `leads` и из роли `sales-director`). Blade-кнопка была убрана ранее (см. Phase 13/changelog 2026-07-07, `admin-bi-developer`); `customers.export`/`invoices.export` не затронуты.
+- **Leads Kanban реализован с нуля** (см. примечание в Phase 9 — предыдущая запись про "Leads kanban" описывала фиксы к несуществовавшему на тот момент функционалу; это первая фактическая реализация):
+  - `app/Livewire/Admin/Leads/Index.php`: `viewMode` (`table`/`kanban`), `setViewMode()`, `scopedQuery()` — общий ownership+search scope, используемый и таблицей, и канбаном; `kanbanColumns()` — 6 колонок (`new`/`qualified`/`contacted`/`in_negotiation`/`won`/`lost`; статус `client` намеренно не получает колонку — терминальный/системный статус); `moveLeadStatus()` — авторизация через `LeadPolicy::update`, whitelist допустимых статусов, идемпотентный no-op при повторном той же колонке, запись `LeadActivity` при реальном изменении статуса (зеркалит существующий `Show::changeStatus()`).
+  - `resources/views/livewire/admin/leads/index.blade.php`: toggle таблица/канбан, состояние персистится в `localStorage` (ключ `rsg-admin-leads-view-mode`, по аналогии с `rsg-admin-sidebar-collapsed`); сама доска — HTML5 drag-and-drop + Alpine, вызывает `$wire.moveLeadStatus(id, status)`.
+  - Ownership-скоуп (sales-manager видит только своих лидов, director/super-admin — всех) применяется одинаково в table- и kanban-режимах через общий `scopedQuery()`.
+- Тесты: `tests/Feature/Leads/LeadKanbanTest.php` — 9 новых тестов (ownership scoping канбана, исключение статуса `client` из колонок, happy path/авторизация/whitelist/идемпотентность `moveLeadStatus()`). `php artisan test`: **193 passed** (было 165 на начало сессии; часть прироста — параллельная работа над roles-permissions из Phase 13, часть — эта задача).
 
 ---
 
@@ -684,7 +697,7 @@ settings.users              settings.roles               settings.system
 Все permissions и роли описаны в `config/permissions.php`. Это единый источник для:
 - Сидера ролей (`database/seeders/RolesSeeder.php`)
 - Сайдбара (массив пунктов меню с `permission`)
-- UI управления ролями (`/admin/settings/roles`)
+- UI управления ролями (`/admin/settings/roles`, реализована — только `super-admin`, гейтится по роли, а не по permission; locked-роли и аддитивная семантика сидера — см. Roadmap Phase 13)
 - Документации
 
 При добавлении нового permission:
