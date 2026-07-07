@@ -112,6 +112,13 @@ Route::middleware(['auth', 'role:super-admin|sales-director|sales-manager|tech-s
         // Settings (super-admin only)
         Route::middleware('role:super-admin')->prefix('settings')->name('settings.')->group(function () {
             Route::get('/users', [UserController::class, 'index'])->name('users');
+        });
+
+        // Roles & Permissions: super-admin always has access (its '*' wildcard implies
+        // settings.roles), but this permission can also be delegated to other roles
+        // via the page itself -- see app/Livewire/Admin/Settings/Roles.php's locked
+        // rows (super-admin/client-admin/client-user) for why that's safe.
+        Route::middleware('role_or_permission:super-admin|settings.roles')->prefix('settings')->name('settings.')->group(function () {
             Route::get('/roles', [RoleController::class, 'index'])->name('roles');
         });
     });

@@ -44,10 +44,16 @@ class Roles extends Component
 
     public function mount(): void
     {
-        // Defense-in-depth: страница уже закрыта `role:super-admin` middleware на роуте,
-        // но проверяем и здесь по РОЛИ (не по permission-строке settings.roles — эту же
-        // страницу нельзя гейтить по праву, которое она сама редактирует).
-        abort_unless(auth()->user()?->hasRole('super-admin'), 403);
+        // Defense-in-depth: страница уже закрыта `role_or_permission:super-admin|settings.roles`
+        // middleware на роуте, дублируем ту же проверку здесь. Гейтинг по permission (а не
+        // жёстко по роли super-admin) безопасен именно потому, что super-admin/client-admin/
+        // client-user — LOCKED_ROLES ниже, их нельзя отредактировать через эту страницу даже
+        // тому, кому делегирован доступ через settings.roles — так что случайно отозвать
+        // права у самого себя/заблокировать всех через эту же страницу невозможно.
+        abort_unless(
+            auth()->user()?->hasRole('super-admin') || auth()->user()?->can('settings.roles'),
+            403
+        );
 
         foreach (Role::all() as $role) {
             $this->selectedPermissions[$role->name] = $role->getPermissionNames()->toArray();
@@ -89,7 +95,10 @@ class Roles extends Component
      */
     public function savePermissions(string $roleName): void
     {
-        abort_unless(auth()->user()?->hasRole('super-admin'), 403);
+        abort_unless(
+            auth()->user()?->hasRole('super-admin') || auth()->user()?->can('settings.roles'),
+            403
+        );
 
         if ($this->isLocked($roleName)) {
             abort(403, 'Эта роль не редактируется через данный интерфейс.');

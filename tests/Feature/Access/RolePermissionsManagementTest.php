@@ -13,9 +13,16 @@ use Tests\TestCase;
 
 /**
  * Coverage for `/admin/settings/roles` (App\Livewire\Admin\Settings\Roles):
- * a super-admin-only screen for viewing/editing the permission set of each
- * internal role, backed by `config/permissions.php` as the whitelist and
- * `database/seeders/RolesSeeder.php`'s additive re-seed semantics.
+ * viewing/editing the permission set of each internal role, backed by
+ * `config/permissions.php` as the whitelist and `database/seeders/RolesSeeder.php`'s
+ * additive re-seed semantics.
+ *
+ * Access is gated by `role_or_permission:super-admin|settings.roles` -- super-admin
+ * always has it (via its '*' wildcard), and it can also be delegated to any other
+ * role by granting `settings.roles` through this same page. This is safe because
+ * super-admin/client-admin/client-user rows are permanently locked/uneditable
+ * server-side (see isLocked()), so there's always a way back in even if
+ * `settings.roles` is accidentally revoked from every other role.
  */
 class RolePermissionsManagementTest extends TestCase
 {
@@ -78,6 +85,39 @@ class RolePermissionsManagementTest extends TestCase
             'client-admin' => ['client-admin'],
             'client-user' => ['client-user'],
         ];
+    }
+
+    public function test_role_granted_settings_roles_permission_can_access_the_page(): void
+    {
+        $this->seedRoles();
+
+        // None of these roles have settings.roles by default -- confirm the
+        // baseline 403, then grant it and confirm access opens up.
+        $director = $this->makeUser('sales-director');
+        $this->actingAs($director)->get('/admin/settings/roles')->assertForbidden();
+
+        SpatieRole::findByName('sales-director')->givePermissionTo('settings.roles');
+
+        $this->actingAs($director)->get('/admin/settings/roles')->assertOk();
+    }
+
+    public function test_role_granted_settings_roles_permission_can_toggle_other_roles_permissions(): void
+    {
+        $this->seedRoles();
+
+        $director = $this->makeUser('sales-director');
+        SpatieRole::findByName('sales-director')->givePermissionTo('settings.roles');
+
+        $this->assertFalse(SpatieRole::findByName('sales-manager')->hasPermissionTo('reports.sales'));
+
+        $component = Livewire::actingAs($director)->test(Roles::class);
+        $current = $component->get('selectedPermissions.sales-manager');
+
+        $component
+            ->set('selectedPermissions.sales-manager', array_merge($current, ['reports.sales']))
+            ->call('savePermissions', 'sales-manager');
+
+        $this->assertTrue(SpatieRole::findByName('sales-manager')->fresh()->hasPermissionTo('reports.sales'));
     }
 
     // ── Toggle permission + persistence ──────────────────────────────────

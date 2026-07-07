@@ -103,13 +103,11 @@
     @endif
 
     {{-- Settings --}}
-    @if(\App\Helpers\Acl::can('settings.users'))
+    @if(\App\Helpers\Acl::can('settings.users') || \App\Helpers\Acl::can('settings.roles'))
     <div class="border-t border-gray-100 mt-3 pt-3">
         {!! $navLink('/admin/settings/users', 'Настройки', 'gear', 'settings.users') !!}
         {!! $navLink('/admin/settings/users', 'Пользователи', 'users', 'settings.users') !!}
-        @if(auth()->user()->hasRole('super-admin'))
-            {!! $navLink('/admin/settings/roles', 'Роли и права', 'shield') !!}
-        @endif
+        {!! $navLink('/admin/settings/roles', 'Роли и права', 'shield', 'settings.roles') !!}
     </div>
     @endif
 
