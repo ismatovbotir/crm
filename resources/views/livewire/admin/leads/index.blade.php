@@ -6,13 +6,6 @@
             <p class="text-sm text-gray-500 mt-0.5">Управление потенциальными клиентами</p>
         </div>
         <div class="flex items-center gap-2">
-            @can('leads.export')
-            <a href="{{ route('admin.export.leads') }}"
-               class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                CSV
-            </a>
-            @endcan
             @can('create', \App\Models\Lead\Lead::class)
             <x-button @click="$dispatch('open-lead-modal')">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,6 +58,7 @@
                     'in_negotiation' => 'Переговоры',
                     'won'            => 'Успех',
                     'lost'           => 'Проигран',
+                    'client'         => 'Конвертирован',
                     default          => $s
                 } }}</option>
                 @endforeach
@@ -74,18 +68,18 @@
 
     {{-- Table --}}
     <x-card :padding="false">
-        <div class="overflow-x-auto">
+        <div class="overflow-auto" style="height: calc(100vh - 26rem); min-height: 20rem;">
             <table class="w-full text-sm">
-                <thead>
-                    <tr class="border-b border-gray-100 bg-gray-50/60">
-                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Имя / Компания</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Телефон</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Источник</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Статус</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Менеджер</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Автор</th>
-                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Создан</th>
-                        <th class="px-4 py-3 w-10"></th>
+                <thead class="sticky top-0 z-10">
+                    <tr class="border-b border-gray-100">
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap bg-gray-50">Имя / Компания</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap bg-gray-50">Телефон</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap bg-gray-50">Источник</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap bg-gray-50">Статус</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap bg-gray-50">Менеджер</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap bg-gray-50">Автор</th>
+                        <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap bg-gray-50">Создан</th>
+                        <th class="px-4 py-3 w-10 bg-gray-50"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-50">

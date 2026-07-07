@@ -32,7 +32,7 @@ class CreateForm extends Component
             'email'            => 'nullable|email|max:255',
             'status'           => 'required|in:new,qualified,contacted,in_negotiation,won,lost',
             'source_id'        => 'nullable|exists:lead_sources,id',
-            'manager_id'       => 'nullable|exists:users,id',
+            'manager_id'       => 'required|exists:users,id',
             'business_type_id' => 'nullable|exists:business_types,id',
             'region'           => 'nullable|string|max:100',
             'score'            => 'nullable|integer|min:1|max:10',
@@ -44,11 +44,12 @@ class CreateForm extends Component
     protected function messages(): array
     {
         return [
-            'name.required'  => 'Укажите имя контакта.',
-            'phone.required' => 'Укажите телефон.',
-            'email.email'    => 'Некорректный email.',
-            'score.min'      => 'Оценка от 1 до 10.',
-            'score.max'      => 'Оценка от 1 до 10.',
+            'name.required'       => 'Укажите имя контакта.',
+            'phone.required'      => 'Укажите телефон.',
+            'email.email'         => 'Некорректный email.',
+            'score.min'           => 'Оценка от 1 до 10.',
+            'score.max'           => 'Оценка от 1 до 10.',
+            'manager_id.required' => 'Выберите менеджера.',
         ];
     }
 
@@ -65,6 +66,8 @@ class CreateForm extends Component
     {
         $this->authorize('create', Lead::class);
         $data = $this->validate();
+
+        $data['budget'] = $data['budget'] === '' ? null : $data['budget'];
 
         Lead::create(array_merge($data, ['created_by' => auth()->id()]));
 

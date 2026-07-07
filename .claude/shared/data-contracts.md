@@ -179,12 +179,12 @@ Always change migration file never creat add_ or extend_ migrations
 | phone | string(20) | no | — | |
 | email | string(255) | yes | null | |
 | source_id | bigint | no | — | FK lead_sources, restrict |
-| status | string(20) | no | 'new' | new / qualified / contacted / in_negotiation / won / lost |
+| status | string(20) | no | 'new' | new / qualified / contacted / in_negotiation / won / lost / client (последнее — системное значение, выставляется только `Show::convertToCustomer()` при конвертации, недоступно для ручного выбора в Create/EditForm) |
 | score | tinyint | yes | null | 1-10 |
 | budget | decimal(15,2) | yes | null | UZS |
 | business_type_id | bigint | yes | null | FK business_types, set null |
 | region | string(100) | yes | null | |
-| manager_id | bigint | no | — | FK users (assigned_to), restrict |
+| manager_id | bigint | no | — | FK users (assigned_to), restrict. **NOT NULL на уровне БД** — `CreateForm`/`EditForm` validation теперь тоже `required` (исправлено 2026-07-07 [laravel-fullstack], ранее было `nullable` и приводило к необработанному `QueryException` при сохранении без менеджера) |
 | converted_at | timestamp | yes | null | когда стал customer |
 | won_amount | decimal(15,2) | yes | null | сумма сделки если won |
 | lost_reason | string(50) | yes | null | price / timing / competitor / other |
@@ -194,6 +194,8 @@ Always change migration file never creat add_ or extend_ migrations
 
 **Индексы**: `status`, `source_id`, `manager_id`, `customer_id`, `business_type_id`, `phone` (для дедупликации)
 **Связи**: `source()`, `manager()`, `customer()`, `businessType()`, `activities()`, `quotes()`, `convertedBy()` (если конвертация — кто это сделал)
+**Правило редактирования**: лид со `status = 'client'` (конвертированный) недоступен для редактирования через `EditForm` — кнопка "Редактировать" скрыта в `show.blade.php`, и `EditForm::mount()` возвращает 403 при прямом заходе (исправлено 2026-07-07 [laravel-fullstack]).
+**Список лидов**: `Index` по умолчанию скрывает `status = 'client'`, если не выбран явный `statusFilter` — но это исключение больше не подавляет активный текстовый поиск (`$search`), и `client` доступен как явный пункт фильтра статуса (исправлено 2026-07-07 [laravel-fullstack], ранее конвертированные лиды были ненаходимы даже по точному номеру телефона).
 
 ### `lead_activities` (timeline лида)
 

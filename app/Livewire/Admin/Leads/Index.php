@@ -37,7 +37,7 @@ class Index extends Component
                   ->orWhere('email', 'like', "%{$search}%");
             }))
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->when(! $this->statusFilter, fn ($q) => $q->where('status', '!=', 'client'));
+            ->when(! $this->statusFilter && ! $search, fn ($q) => $q->where('status', '!=', 'client'));
 
         /** @var \App\Models\User $user */
         $user = auth()->user();
@@ -65,7 +65,7 @@ class Index extends Component
 
     public function render()
     {
-        $statuses = ['new', 'qualified', 'contacted', 'in_negotiation', 'won', 'lost'];
+        $statuses = ['new', 'qualified', 'contacted', 'in_negotiation', 'won', 'lost', 'client'];
 
         $leads = $this->baseQuery()
             ->with(['manager', 'creator', 'source', 'businessType'])
