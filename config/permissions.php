@@ -26,7 +26,6 @@ return [
             'leads.update' => 'Редактирование лидов',
             'leads.delete' => 'Удаление лидов',
             'leads.assign' => 'Назначение ответственного менеджера',
-            'leads.export' => 'Экспорт лидов (CSV)',
         ],
 
         'customers' => [
@@ -105,7 +104,7 @@ return [
         'sales-director' => [
             'guard'       => 'web',
             'permissions' => [
-                'leads.view', 'leads.create', 'leads.update', 'leads.delete', 'leads.assign', 'leads.export',
+                'leads.view', 'leads.create', 'leads.update', 'leads.delete', 'leads.assign',
                 'customers.view', 'customers.create', 'customers.update', 'customers.delete', 'customers.export',
                 'quotes.view', 'quotes.create', 'quotes.update', 'quotes.delete', 'quotes.send',
                 'invoices.view', 'invoices.export',

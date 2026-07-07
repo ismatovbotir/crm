@@ -5,48 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Customer\Customer;
 use App\Models\Invoice\Invoice;
-use App\Models\Lead\Lead;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExportController extends Controller
 {
-    public function leads(): StreamedResponse
-    {
-        abort_unless(auth()->user()->can('leads.export'), 403);
-
-        return response()->streamDownload(function () {
-            $handle = fopen('php://output', 'w');
-            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM for Excel
-
-            fputcsv($handle, ['ID', 'Имя', 'Компания', 'Телефон', 'Email', 'Источник', 'Менеджер', 'Статус', 'Оценка', 'Бюджет', 'Регион', 'Дата создания'], ';');
-
-            Lead::with(['source', 'manager'])
-                ->orderBy('id')
-                ->chunk(200, function ($leads) use ($handle) {
-                    foreach ($leads as $lead) {
-                        fputcsv($handle, [
-                            $lead->id,
-                            $lead->name,
-                            $lead->company ?? '',
-                            $lead->phone ?? '',
-                            $lead->email ?? '',
-                            $lead->source?->name ?? '',
-                            $lead->manager?->name ?? '',
-                            $lead->status,
-                            $lead->score ?? 0,
-                            $lead->budget ?? '',
-                            $lead->region ?? '',
-                            $lead->created_at->format('d.m.Y'),
-                        ], ';');
-                    }
-                });
-
-            fclose($handle);
-        }, 'leads-' . now()->format('Y-m-d') . '.csv', [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-        ]);
-    }
-
     public function customers(): StreamedResponse
     {
         abort_unless(auth()->user()->can('customers.export'), 403);

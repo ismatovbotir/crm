@@ -1,4 +1,12 @@
-<div>
+<div
+    x-data
+    x-init="
+        const saved = localStorage.getItem('rsg-admin-leads-view-mode');
+        if (saved === 'kanban' && @js($viewMode) !== 'kanban') {
+            $wire.setViewMode('kanban');
+        }
+    "
+>
     {{-- Page header --}}
     <div class="flex items-start justify-between mb-6">
         <div>
@@ -6,6 +14,31 @@
             <p class="text-sm text-gray-500 mt-0.5">Управление потенциальными клиентами</p>
         </div>
         <div class="flex items-center gap-2">
+            {{-- Table / Kanban view toggle --}}
+            <div class="flex items-center rounded-md border border-gray-300 bg-white p-0.5">
+                <button
+                    type="button"
+                    wire:click="setViewMode('table')"
+                    @click="localStorage.setItem('rsg-admin-leads-view-mode', 'table')"
+                    title="Таблица"
+                    class="p-1.5 rounded transition-colors {{ $viewMode === 'table' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600' }}"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.75 6A2.25 2.25 0 016 3.75h12A2.25 2.25 0 0120.25 6v12A2.25 2.25 0 0118 20.25H6A2.25 2.25 0 013.75 18V6zM3.75 9h16.5M3.75 15h16.5M9 3.75v16.5M15 3.75v16.5"/>
+                    </svg>
+                </button>
+                <button
+                    type="button"
+                    wire:click="setViewMode('kanban')"
+                    @click="localStorage.setItem('rsg-admin-leads-view-mode', 'kanban')"
+                    title="Канбан"
+                    class="p-1.5 rounded transition-colors {{ $viewMode === 'kanban' ? 'bg-primary-50 text-primary-600' : 'text-gray-400 hover:text-gray-600' }}"
+                >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4.5v15m6-15v15M3.375 4.5h17.25c.621 0 1.125.504 1.125 1.125v12.75c0 .621-.504 1.125-1.125 1.125H3.375c-.621 0-1.125-.504-1.125-1.125V5.625c0-.621.504-1.125 1.125-1.125z"/>
+                    </svg>
+                </button>
+            </div>
             @can('create', \App\Models\Lead\Lead::class)
             <x-button @click="$dispatch('open-lead-modal')">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,6 +60,7 @@
     </div>
     @endif
 
+    @if($viewMode === 'table')
     {{-- Filters --}}
     <x-card class="mb-4" :padding="false">
         <div class="flex flex-wrap gap-3 p-4">
@@ -188,6 +222,87 @@
         </div>
         @endif
     </x-card>
+    @endif
+
+    @if($viewMode === 'kanban')
+    {{-- Kanban board --}}
+    <div class="overflow-x-auto pb-2" x-data="{ dragging: null, draggingFrom: null, overColumn: null }">
+        <div class="flex gap-4" style="min-width: max-content;">
+            @foreach($kanbanStatuses as $status)
+                @php
+                $colMeta = match($status) {
+                    'new'            => ['label' => 'Новый',          'textClass' => 'text-primary-700'],
+                    'qualified'      => ['label' => 'Квалифицирован', 'textClass' => 'text-purple-700'],
+                    'contacted'      => ['label' => 'Контакт',        'textClass' => 'text-warning-700'],
+                    'in_negotiation' => ['label' => 'Переговоры',     'textClass' => 'text-warning-700'],
+                    'won'            => ['label' => 'Успех',          'textClass' => 'text-success-700'],
+                    'lost'           => ['label' => 'Проигран',       'textClass' => 'text-danger-700'],
+                    default          => ['label' => $status,          'textClass' => 'text-gray-600'],
+                };
+                $col = $kanbanColumns[$status] ?? ['leads' => collect(), 'total' => 0, 'remaining' => 0];
+                @endphp
+                <div
+                    class="flex-shrink-0 w-72 bg-gray-50 rounded-lg flex flex-col border border-transparent transition-colors"
+                    :class="(overColumn === '{{ $status }}' && draggingFrom !== '{{ $status }}') ? 'ring-2 ring-primary-400 border-primary-200' : ''"
+                    @dragover.prevent="if (draggingFrom !== '{{ $status }}') { overColumn = '{{ $status }}'; }"
+                    @dragleave="if (overColumn === '{{ $status }}') { overColumn = null; }"
+                    @drop.prevent="
+                        const id = $event.dataTransfer.getData('text/plain');
+                        if (id && draggingFrom !== '{{ $status }}') {
+                            $wire.moveLeadStatus(parseInt(id), '{{ $status }}');
+                        }
+                        overColumn = null;
+                        dragging = null;
+                        draggingFrom = null;
+                    "
+                >
+                    <div class="px-3 py-2.5 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                        <h3 class="text-xs font-semibold uppercase tracking-wide {{ $colMeta['textClass'] }}">{{ $colMeta['label'] }}</h3>
+                        <span class="text-xs font-medium text-gray-500 bg-white px-1.5 py-0.5 rounded-full border border-gray-200">{{ $col['total'] }}</span>
+                    </div>
+
+                    <div class="flex-1 overflow-y-auto p-2 space-y-2" style="max-height: calc(100vh - 22rem); min-height: 16rem;">
+                        @forelse($col['leads'] as $lead)
+                        <div
+                            draggable="true"
+                            @dragstart="
+                                dragging = {{ $lead->id }};
+                                draggingFrom = '{{ $status }}';
+                                $event.dataTransfer.effectAllowed = 'move';
+                                $event.dataTransfer.setData('text/plain', '{{ $lead->id }}');
+                            "
+                            @dragend="dragging = null; draggingFrom = null; overColumn = null;"
+                            class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow transition-shadow cursor-move"
+                            :class="dragging === {{ $lead->id }} ? 'opacity-50' : ''"
+                        >
+                            <a href="{{ route('admin.leads.show', $lead) }}"
+                               class="block font-medium text-sm text-gray-900 hover:text-primary-600 transition-colors truncate">
+                                {{ $lead->name }}
+                            </a>
+                            @if($lead->company)
+                            <p class="text-xs text-gray-500 mt-0.5 truncate">{{ $lead->company }}</p>
+                            @endif
+                            <p class="text-xs text-gray-500 mt-1">{{ $lead->phone }}</p>
+                            <div class="flex items-center justify-between mt-2 gap-2">
+                                <span class="text-[11px] text-gray-400 truncate">{{ $lead->manager?->name ?? '—' }}</span>
+                                <span class="text-[11px] text-gray-400 whitespace-nowrap">{{ $lead->created_at->format('d.m.Y') }}</span>
+                            </div>
+                        </div>
+                        @empty
+                        <p class="text-xs text-gray-400 text-center py-6">Нет лидов</p>
+                        @endforelse
+
+                        @if($col['remaining'] > 0)
+                        <p class="text-xs text-gray-400 text-center py-2 border-t border-gray-100 mt-1">
+                            и ещё {{ $col['remaining'] }}
+                        </p>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 
     {{-- Create modal --}}
     <x-modal title="Новый лид" open-event="open-lead-modal" close-event="close-lead-modal" save-event="lead-saved" form-id="lead-create-form" save-label="Создать" cancel-event="close-lead-modal">
