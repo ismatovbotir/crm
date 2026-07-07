@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\EquipmentRequestController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\SetupController;
 use App\Http\Controllers\Admin\Settings\UserController;
+use App\Http\Controllers\Admin\Settings\RoleController;
 use App\Http\Controllers\Admin\PdfController as AdminPdfController;
 use App\Http\Controllers\Admin\ExportController;
 use App\Http\Controllers\Admin\ImportController;
@@ -101,7 +102,6 @@ Route::middleware(['auth', 'role:super-admin|sales-director|sales-manager|tech-s
         Route::get('/sells/{sell}/pdf', [AdminPdfController::class, 'sell'])->name('sells.pdf');
 
         // CSV Exports
-        Route::get('/export/leads', [ExportController::class, 'leads'])->name('export.leads');
         Route::get('/export/customers', [ExportController::class, 'customers'])->name('export.customers');
         Route::get('/export/invoices', [ExportController::class, 'invoices'])->name('export.invoices');
 
@@ -112,6 +112,7 @@ Route::middleware(['auth', 'role:super-admin|sales-director|sales-manager|tech-s
         // Settings (super-admin only)
         Route::middleware('role:super-admin')->prefix('settings')->name('settings.')->group(function () {
             Route::get('/users', [UserController::class, 'index'])->name('users');
+            Route::get('/roles', [RoleController::class, 'index'])->name('roles');
         });
     });
 
