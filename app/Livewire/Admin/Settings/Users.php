@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Settings;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -36,7 +37,7 @@ class Users extends Component
             'name'     => 'required|string|max:255',
             'email'    => "required|email|{$uniqueEmail}",
             'password' => $this->editingUserId ? 'nullable|min:6' : 'required|min:6',
-            'role'     => 'required|string',
+            'role'     => ['required', 'string', Rule::in(User::INTERNAL_ROLES)],
             'isActive' => 'boolean',
         ];
     }
@@ -50,6 +51,7 @@ class Users extends Component
             'password.required' => 'Введите пароль',
             'password.min'      => 'Пароль минимум 6 символов',
             'role.required'     => 'Выберите роль',
+            'role.in'           => 'Недопустимая роль.',
         ];
     }
 

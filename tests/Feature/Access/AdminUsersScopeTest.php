@@ -5,6 +5,7 @@ namespace Tests\Feature\Access;
 use App\Livewire\Admin\Settings\Users;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -220,22 +221,21 @@ class AdminUsersScopeTest extends TestCase
         $this->assertTrue($target->refresh()->is_active);
     }
 
-    // ── Known gap (not a blocker — documented per QA instructions) ───────
+    // ── Role validation (defense-in-depth, closed) ───────────────────────
 
     /**
-     * KNOWN GAP, not fixed here: `Users::rules()` validates `role` as
-     * `required|string`, not `in:` a whitelist. The UI dropdown
-     * (`availableRoles()`) never *offers* `client-admin`/`client-user`, so
-     * this isn't reachable through the normal form — but nothing stops a
-     * direct property write (e.g. a tampered Livewire payload, or any other
-     * code path that sets `$component->role` and calls `save()`) from
-     * assigning a client-only role to what is supposed to be an internal-only
-     * user record. This test documents the current (permissive) behavior;
-     * it does not assert a requirement was violated. If tightened, the
-     * likely fix is `'role' => ['required', 'string', Rule::in(User::INTERNAL_ROLES)]`
-     * in `Users::rules()` — that belongs to `laravel-fullstack`.
+     * Defense-in-depth, closed: `Users::rules()` now validates `role` against
+     * `Rule::in(User::INTERNAL_ROLES)`, not just `required|string`. The UI
+     * dropdown (`availableRoles()`) never *offered* `client-admin`/`client-user`,
+     * so this path was never reachable through the normal form — but a direct
+     * property write (e.g. a tampered Livewire payload, or any other code path
+     * that sets `$component->role` and calls `save()`) used to be able to
+     * assign a client-only role to what is supposed to be an internal-only
+     * user record. This is now rejected: `save()` throws a
+     * `ValidationException` and no user row is persisted.
      */
-    public function test_save_does_not_reject_a_client_role_assigned_via_direct_property_write(): void
+    #[DataProvider('clientRoleProvider')]
+    public function test_save_rejects_a_client_role_assigned_via_direct_property_write(string $clientRole): void
     {
         $this->seedRoles();
         $this->actingAs($this->makeInternalUser('super-admin'));
@@ -244,12 +244,24 @@ class AdminUsersScopeTest extends TestCase
         $component->name = 'Sneaky User';
         $component->email = 'sneaky@example.com';
         $component->password = 'secret123';
-        $component->role = 'client-user'; // never offered by availableRoles(), but not blocked by validation
+        $component->role = $clientRole; // never offered by availableRoles(), now blocked by validation
         $component->isActive = true;
-        $component->save();
 
-        $created = User::where('email', 'sneaky@example.com')->firstOrFail();
-        $this->assertTrue($created->hasRole('client-user'));
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+
+        try {
+            $component->save();
+        } finally {
+            $this->assertDatabaseMissing('users', ['email' => 'sneaky@example.com']);
+        }
+    }
+
+    public static function clientRoleProvider(): array
+    {
+        return [
+            'client-admin' => ['client-admin'],
+            'client-user' => ['client-user'],
+        ];
     }
 
     // ── Route-level access control (safe: never reaches the buggy render) ──
