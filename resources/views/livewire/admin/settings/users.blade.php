@@ -79,10 +79,9 @@
                                         'client-user'     => 'bg-orange-50 text-orange-600',
                                     ];
                                     $color = $roleColors[$role] ?? 'bg-gray-100 text-gray-600';
-                                    $roleLabels = collect(config('permissions.roles'))->mapWithKeys(fn($v, $k) => [$k => $v['label']]);
                                 @endphp
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $color }}">
-                                    {{ $roleLabels[$role] ?? $role }}
+                                    {{ $this->availableRoles[$role] ?? $role }}
                                 </span>
                             @else
                                 <span class="text-xs text-gray-400">—</span>

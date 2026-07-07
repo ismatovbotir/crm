@@ -63,10 +63,24 @@ class Users extends Component
         $this->resetPage();
     }
 
+    /**
+     * Человекочитаемые метки внутренних ролей (config/permissions.php не
+     * содержит label/description для ролей — только guard и permissions).
+     */
+    private const ROLE_LABELS = [
+        'super-admin'     => 'Супер-администратор',
+        'sales-director'  => 'Директор по продажам',
+        'sales-manager'   => 'Менеджер по продажам',
+        'tech-support'    => 'Техническая поддержка',
+        'catalog-manager' => 'Менеджер каталога',
+        'accountant'      => 'Бухгалтер',
+    ];
+
     #[Computed]
     public function users()
     {
         return User::query()
+            ->managers()
             ->with('roles')
             ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
@@ -80,10 +94,14 @@ class Users extends Component
     #[Computed]
     public function availableRoles(): array
     {
-        $config = config('permissions.roles', []);
+        // Только внутренние роли (сотрудники RSG) — клиентские роли портала
+        // (client-admin/client-user) сюда не попадают, они управляются
+        // отдельно через Customers\Show::attachUser()/detachUser().
+        $config = array_intersect_key(config('permissions.roles', []), array_flip(User::INTERNAL_ROLES));
+
         $roles = [];
         foreach ($config as $slug => $data) {
-            $roles[$slug] = $data['label'] . ' — ' . ($data['description'] ?? '');
+            $roles[$slug] = self::ROLE_LABELS[$slug] ?? \Illuminate\Support\Str::headline($slug);
         }
         return $roles;
     }

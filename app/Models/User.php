@@ -16,6 +16,16 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasRoles;
 
+    /**
+     * Роли внутренних сотрудников RSG (CRM-контур), в отличие от клиентских
+     * ролей портала (client-admin, client-user). Единый источник правды —
+     * используется в scopeManagers() и App\Helpers\Acl::isInternal().
+     */
+    public const INTERNAL_ROLES = [
+        'super-admin', 'sales-director', 'sales-manager',
+        'tech-support', 'catalog-manager', 'accountant',
+    ];
+
     protected $fillable = [
         'name',
         'email',
@@ -61,10 +71,7 @@ class User extends Authenticatable
     public function scopeManagers($query)
     {
         return $query->whereHas('roles', function ($q) {
-            $q->whereIn('name', [
-                'super-admin', 'sales-director', 'sales-manager',
-                'tech-support', 'catalog-manager', 'accountant',
-            ]);
+            $q->whereIn('name', self::INTERNAL_ROLES);
         });
     }
 }

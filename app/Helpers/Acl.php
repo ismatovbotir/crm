@@ -71,10 +71,7 @@ class Acl
      */
     public static function isInternal(): bool
     {
-        return self::hasAnyRole([
-            'super-admin', 'sales-director', 'sales-manager',
-            'tech-support', 'catalog-manager', 'accountant',
-        ]);
+        return self::hasAnyRole(\App\Models\User::INTERNAL_ROLES);
     }
 
     /**
