@@ -419,6 +419,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Ownership-скоуп (sales-manager видит только своих лидов, director/super-admin — всех) применяется одинаково в table- и kanban-режимах через общий `scopedQuery()`.
 - Тесты: `tests/Feature/Leads/LeadKanbanTest.php` — 9 новых тестов (ownership scoping канбана, исключение статуса `client` из колонок, happy path/авторизация/whitelist/идемпотентность `moveLeadStatus()`). `php artisan test`: **193 passed** (было 165 на начало сессии; часть прироста — параллельная работа над roles-permissions из Phase 13, часть — эта задача).
 
+### Phase 15: Admin branding — фирменная тема RSG (#D00000) ✅ (Завершено — 2026-07-08)
+- **Семантическая цветовая палитра определена впервые**: `resources/css/app.css` (Tailwind v4, `@theme`) получил полную шкалу (50-900) для `--color-primary-*`, `--color-success-*`, `--color-warning-*`, `--color-danger-*`, `--color-info-*`. До этого классы вроде `bg-primary-600`, уже использовавшиеся примерно в 70 blade-файлах (admin и portal), физически не генерировали CSS — токены нигде не были определены (пробел с самого начала проекта). Дефолт для `primary` — нейтральный Tailwind blue, наследуется всеми layout'ами.
+- **Брендовый красный `#D00000` применён только к admin-контуру**, через CSS-класс `.admin-theme` (переопределяет только `--color-primary-*` каскадом CSS custom properties), который вешается на `<html>` только в `resources/views/layouts/admin.blade.php`. Портал (`layouts/portal.blade.php`) и guest/login (`layouts/guest.blade.php`) на этот класс не переведены и остаются на нейтральном дефолте — паттерн специально спроектирован так, чтобы будущие layout'ы явно выбирали, наследовать бренд-тему или нет (см. `.claude/shared/decisions-log.md`, запись 2026-07-08).
+- `success/warning/danger/info` остаются семантически нейтральными везде (в т.ч. внутри `.admin-theme`) — статусное цветовое кодирование не путается с брендовым primary-красным.
+- Логотип в `resources/views/admin/partials/sidebar.blade.php`: inline SVG-иконка "штрихкод" + текст "RSG" (`text-primary-600`) вместо прежнего квадрата с буквой "R".
+- `resources/views/admin/partials/header.blade.php`, `*-status-badge.blade.php`, `components/badge.blade.php` не изменялись — уже были полностью на семантических классах.
+- **Открытый follow-up (не сделан)**: Chart.js-конфиги в `resources/views/livewire/admin/dashboard.blade.php` и `resources/views/livewire/admin/reports/index.blade.php` используют hardcoded hex (`#3B82F6`) вместо новых токенов — графики не подхватывают бренд-красный автоматически.
+- `php artisan test`: 195 passed, 0 failed — регрессий нет (изменение чисто CSS/Blade).
+
 ---
 
 # 🔀 Часть 1.5. Архитектура агентов (PM + субагенты)
@@ -922,3 +931,11 @@ Route::middleware(['auth', 'role:client'])->prefix('portal')->name('portal.')->g
 4. **Vite assets не подгружаются** → запусти `npm run dev` или `npm run build`
 5. **Дублирование лидов** → проверять по телефону/email уникальность с трим/нормализацией
 6. **Пути для CRM vs Portal** → не смешивать роуты, использовать разные prefix/middleware
+
+## 2.11. Цветовая / дизайн-система
+
+- Все цветовые токены определены один раз в `resources/css/app.css` (Tailwind v4, блок `@theme`): шкалы (50-900) `--color-primary-*`, `--color-success-*`, `--color-warning-*`, `--color-danger-*`, `--color-info-*`. Это единственный источник для utility-классов вида `bg-primary-600`, `text-danger-700` и т.д. — других мест, где определяются цвета, в проекте нет.
+- `primary` по умолчанию — нейтральный Tailwind blue, наследуется всеми layout'ами (admin/portal/guest).
+- **`.admin-theme`** — CSS-класс на `<html>` в `resources/views/layouts/admin.blade.php`, переопределяющий каскадом только `--color-primary-*` на брендовый RSG-красный (`#D00000`). Это паттерн контурного брендинга: новый layout/контур (например, будущий партнёрский портал) должен явно решить, наследовать ли `.admin-theme` или остаться на нейтральном дефолте — автоматически это не наследуется.
+- `success`/`warning`/`danger`/`info` — общесистемная семантика статусов (успех/предупреждение/ошибка/инфо), не завязанная на бренд; не путать `danger` (обычный tailwind red) с брендовым `primary`-красным.
+- Подробности и обоснование — `.claude/shared/decisions-log.md`, запись «2026-07-08 — Семантическая цветовая палитра определена впервые + паттерн `.admin-theme`...»; Roadmap — Часть 1.7 → Phase 15.

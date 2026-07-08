@@ -1,12 +1,17 @@
 {{-- Logo --}}
 <div class="h-16 flex items-center px-5 border-b border-gray-200" :class="sidebarCollapsed ? 'lg:px-0 lg:justify-center' : ''">
     <a href="{{ url('/admin') }}" class="flex items-center gap-2.5" title="RSG-CRM">
-        <div class="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center flex-shrink-0">
-            <span class="text-white font-bold text-sm">R</span>
-        </div>
+        <svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <rect x="3"  y="7"  width="3" height="18" rx="0.5" fill="#333333"/>
+            <rect x="8"  y="4"  width="2" height="24" rx="0.5" fill="#333333"/>
+            <rect x="12" y="9"  width="4" height="14" rx="0.5" fill="#333333"/>
+            <rect x="18" y="4"  width="2" height="24" rx="0.5" fill="#333333"/>
+            <rect x="22" y="7"  width="3" height="18" rx="0.5" fill="#333333"/>
+            <rect x="27" y="10" width="2" height="12" rx="0.5" fill="#333333"/>
+        </svg>
         <div :class="sidebarCollapsed ? 'lg:hidden' : ''">
-            <span class="font-semibold text-gray-900 text-sm leading-tight block">RSG-CRM</span>
-            <span class="text-xs text-gray-400 leading-tight block">Торговое оборудование</span>
+            <span class="font-extrabold text-primary-600 text-lg leading-tight block tracking-tight">RSG</span>
+            <span class="text-xs text-gray-400 leading-tight block -mt-0.5">Торговое оборудование</span>
         </div>
     </a>
 </div>
